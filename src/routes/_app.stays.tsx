@@ -1,0 +1,410 @@
+import { createFileRoute } from "@tanstack/react-router";
+import { useMutation } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { BedDouble, Loader2, MapPin, Search, Star } from "lucide-react";
+import * as React from "react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  searchStays,
+  getStayRates,
+  createStayBooking,
+} from "@/lib/stays.functions";
+import { useAuth } from "@/hooks/useAuth";
+
+export const Route = createFileRoute("/_app/stays")({
+  component: StaysPage,
+});
+
+function tomorrowISO(offset = 1) {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  return d.toISOString().slice(0, 10);
+}
+
+function StaysPage() {
+  const { user } = useAuth();
+  const searchFn = useServerFn(searchStays);
+  const ratesFn = useServerFn(getStayRates);
+  const bookFn = useServerFn(createStayBooking);
+
+  const [form, setForm] = React.useState(() => ({
+    query: "Lisboa",
+    check_in_date: tomorrowISO(1),
+    check_out_date: tomorrowISO(4),
+    guests: 2,
+    rooms: 1,
+  }));
+
+  const [results, setResults] = React.useState<any[]>([]);
+  const [selected, setSelected] = React.useState<any | null>(null);
+  const [details, setDetails] = React.useState<any | null>(null);
+  const [bookingRate, setBookingRate] = React.useState<any | null>(null);
+  const [guest, setGuest] = React.useState({
+    given_name: "",
+    family_name: "",
+    email: user?.email || "",
+    phone_number: "",
+  });
+
+  const search = useMutation({
+    mutationFn: () => searchFn({ data: form }),
+    onSuccess: (d) => {
+      setResults(d.results);
+      if (!d.results.length) toast.message("Nenhum resultado encontrado");
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const loadRates = useMutation({
+    mutationFn: (id: string) => ratesFn({ data: { search_result_id: id } }),
+    onSuccess: (d) => setDetails(d),
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const book = useMutation({
+    mutationFn: () =>
+      bookFn({
+        data: {
+          rate_id: bookingRate.id,
+          email: guest.email,
+          phone_number: guest.phone_number,
+          guests: [
+            { given_name: guest.given_name, family_name: guest.family_name },
+          ],
+        },
+      }),
+    onSuccess: (d) => {
+      toast.success(`Reserva confirmada! Ref: ${d.reference || d.id}`);
+      setBookingRate(null);
+      setSelected(null);
+      setDetails(null);
+    },
+    onError: (e) => toast.error((e as Error).message),
+  });
+
+  const openDetails = (r: any) => {
+    setSelected(r);
+    setDetails(null);
+    loadRates.mutate(r.id);
+  };
+
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-8 md:px-10">
+      <div className="mb-6 flex items-center gap-3">
+        <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-primary shadow-glow">
+          <BedDouble className="h-5 w-5 text-primary-foreground" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold">Hospedagem</h1>
+          <p className="text-sm text-muted-foreground">
+            Hotéis, hostels e apartamentos com reserva e pagamento
+          </p>
+        </div>
+      </div>
+
+      {/* Search form */}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          search.mutate();
+        }}
+        className="grid gap-3 rounded-2xl border border-border bg-card/60 p-4 md:grid-cols-[2fr_1fr_1fr_1fr_1fr_auto]"
+      >
+        <div className="space-y-1.5">
+          <Label>Destino ou hotel</Label>
+          <Input
+            value={form.query}
+            onChange={(e) => setForm({ ...form, query: e.target.value })}
+            placeholder="Ex: Lisboa, Tóquio, Hotel X"
+            required
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Check-in</Label>
+          <Input
+            type="date"
+            min={tomorrowISO(0)}
+            value={form.check_in_date}
+            onChange={(e) =>
+              setForm({ ...form, check_in_date: e.target.value })
+            }
+            required
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Check-out</Label>
+          <Input
+            type="date"
+            min={form.check_in_date || tomorrowISO(1)}
+            value={form.check_out_date}
+            onChange={(e) =>
+              setForm({ ...form, check_out_date: e.target.value })
+            }
+            required
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Hóspedes</Label>
+          <Input
+            type="number"
+            min={1}
+            max={10}
+            value={form.guests}
+            onChange={(e) =>
+              setForm({ ...form, guests: Number(e.target.value) })
+            }
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Quartos</Label>
+          <Input
+            type="number"
+            min={1}
+            max={5}
+            value={form.rooms}
+            onChange={(e) =>
+              setForm({ ...form, rooms: Number(e.target.value) })
+            }
+          />
+        </div>
+        <div className="flex items-end">
+          <Button
+            type="submit"
+            disabled={search.isPending}
+            className="bg-gradient-primary shadow-glow"
+          >
+            {search.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Search className="h-4 w-4" />
+            )}
+            Buscar
+          </Button>
+        </div>
+      </form>
+
+      {/* Results */}
+      <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {results.map((r) => (
+          <button
+            key={r.id}
+            onClick={() => openDetails(r)}
+            className="group overflow-hidden rounded-2xl border border-border bg-card text-left transition hover:border-primary/50"
+          >
+            <div
+              className="h-40 bg-muted bg-cover bg-center"
+              style={{
+                backgroundImage: r.accommodation.photos?.[0]
+                  ? `url(${r.accommodation.photos[0]})`
+                  : undefined,
+              }}
+            />
+            <div className="p-4">
+              <div className="flex items-start justify-between gap-2">
+                <h3 className="font-semibold leading-tight">
+                  {r.accommodation.name}
+                </h3>
+                {r.accommodation.rating ? (
+                  <div className="flex shrink-0 items-center gap-0.5 text-xs text-amber-400">
+                    <Star className="h-3 w-3 fill-current" />
+                    {r.accommodation.rating}
+                  </div>
+                ) : null}
+              </div>
+              {r.accommodation.location?.address ? (
+                <p className="mt-1 flex items-center gap-1 text-xs text-muted-foreground">
+                  <MapPin className="h-3 w-3" />
+                  {[
+                    r.accommodation.location.address.line_one,
+                    r.accommodation.location.address.city_name,
+                  ]
+                    .filter(Boolean)
+                    .join(", ")}
+                </p>
+              ) : null}
+              <div className="mt-3 text-sm">
+                <span className="text-lg font-bold text-primary">
+                  {r.cheapest_rate_currency} {r.cheapest_rate_total_amount}
+                </span>
+                <span className="ml-1 text-xs text-muted-foreground">
+                  total
+                </span>
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* Details / rates dialog */}
+      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{selected?.accommodation?.name}</DialogTitle>
+          </DialogHeader>
+
+          {loadRates.isPending && (
+            <div className="grid place-items-center py-10">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+            </div>
+          )}
+
+          {details && (
+            <div className="space-y-4">
+              {details.accommodation.photos?.[0] && (
+                <img
+                  src={details.accommodation.photos[0]}
+                  alt={details.accommodation.name}
+                  className="h-56 w-full rounded-lg object-cover"
+                />
+              )}
+              {details.accommodation.description && (
+                <p className="text-sm text-muted-foreground line-clamp-4">
+                  {details.accommodation.description}
+                </p>
+              )}
+              <div>
+                <h4 className="mb-2 text-sm font-semibold">
+                  Tarifas disponíveis
+                </h4>
+                <div className="space-y-2">
+                  {details.rates.map((rate: any) => (
+                    <div
+                      key={rate.id}
+                      className="flex items-center justify-between rounded-lg border border-border p-3"
+                    >
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-medium">
+                          {rate.room_name}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {rate.board_type || "Sem refeição"} ·{" "}
+                          {rate.payment_type}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="text-right">
+                          <div className="font-bold">
+                            {rate.total_currency} {rate.total_amount}
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => setBookingRate(rate)}
+                          className="bg-gradient-primary"
+                        >
+                          Reservar
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                  {!details.rates.length && (
+                    <p className="text-sm text-muted-foreground">
+                      Nenhuma tarifa disponível.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Booking dialog */}
+      <Dialog
+        open={!!bookingRate}
+        onOpenChange={(o) => !o && setBookingRate(null)}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar reserva</DialogTitle>
+          </DialogHeader>
+          {bookingRate && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                book.mutate();
+              }}
+              className="space-y-3"
+            >
+              <div className="rounded-lg bg-muted/30 p-3 text-sm">
+                <div className="font-medium">{bookingRate.room_name}</div>
+                <div className="text-muted-foreground">
+                  Total:{" "}
+                  <span className="font-bold text-foreground">
+                    {bookingRate.total_currency} {bookingRate.total_amount}
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label>Nome</Label>
+                  <Input
+                    value={guest.given_name}
+                    onChange={(e) =>
+                      setGuest({ ...guest, given_name: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Sobrenome</Label>
+                  <Input
+                    value={guest.family_name}
+                    onChange={(e) =>
+                      setGuest({ ...guest, family_name: e.target.value })
+                    }
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <Label>E-mail</Label>
+                <Input
+                  type="email"
+                  value={guest.email}
+                  onChange={(e) =>
+                    setGuest({ ...guest, email: e.target.value })
+                  }
+                  required
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Telefone</Label>
+                <Input
+                  value={guest.phone_number}
+                  onChange={(e) =>
+                    setGuest({ ...guest, phone_number: e.target.value })
+                  }
+                  placeholder="+5511999999999"
+                  required
+                />
+              </div>
+              <Button
+                type="submit"
+                disabled={book.isPending}
+                className="w-full bg-gradient-primary shadow-glow"
+              >
+                {book.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : null}
+                Pagar e confirmar
+              </Button>
+              <p className="text-center text-xs text-muted-foreground">
+                Pagamento processado via saldo Duffel (modo teste).
+              </p>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
