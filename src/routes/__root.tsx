@@ -1,5 +1,4 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { createClientOnlyFn } from "@tanstack/react-start";
 import {
   Outlet,
   Link,
@@ -13,44 +12,6 @@ import appCss from "../styles.css?url";
 import { I18nProvider } from "@/lib/i18n/I18nProvider";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
-import { supabase } from "@/integrations/supabase/client";
-
-// Inject Supabase access token on server-fn requests so middleware-protected
-// functions get an Authorization header automatically. Client-only.
-const installServerFnAuthFetch = createClientOnlyFn(() => {
-  const w = window as unknown as { __jaqtrypAuthFetchInstalled?: boolean };
-  if (w.__jaqtrypAuthFetchInstalled) return;
-  w.__jaqtrypAuthFetchInstalled = true;
-  const originalFetch = window.fetch.bind(window);
-  window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-    try {
-      const url =
-        typeof input === "string"
-          ? input
-          : input instanceof URL
-            ? input.toString()
-            : input.url;
-      if (url && url.includes("/_serverFn/")) {
-        const { data } = await supabase.auth.getSession();
-        const token = data.session?.access_token;
-        if (token) {
-          const headers = new Headers(
-            init?.headers || (input instanceof Request ? input.headers : undefined),
-          );
-          if (!headers.has("authorization")) {
-            headers.set("authorization", `Bearer ${token}`);
-          }
-          return originalFetch(input, { ...init, headers });
-        }
-      }
-    } catch {
-      // fall through
-    }
-    return originalFetch(input, init);
-  };
-});
-
-installServerFnAuthFetch();
 
 function NotFoundComponent() {
   return (
