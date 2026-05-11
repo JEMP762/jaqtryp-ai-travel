@@ -231,6 +231,24 @@ function TranslatorPage() {
             </Select>
             <div className="flex items-center gap-1">
               <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => cameraInputRef.current?.click()}
+                disabled={ocrLoading}
+                title="Tirar foto e traduzir"
+              >
+                {ocrLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={ocrLoading}
+                title="Enviar imagem/scanner e traduzir"
+              >
+                <ScanLine className="h-4 w-4" />
+              </Button>
+              <Button
                 variant={listening ? "default" : "ghost"}
                 size="icon"
                 onClick={startListening}
@@ -248,6 +266,29 @@ function TranslatorPage() {
               >
                 <Volume2 className="h-4 w-4" />
               </Button>
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleImageOcr(f);
+                  e.target.value = "";
+                }}
+              />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleImageOcr(f);
+                  e.target.value = "";
+                }}
+              />
             </div>
           </div>
           <Textarea
