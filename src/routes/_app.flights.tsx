@@ -463,3 +463,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function updatePax(setter: React.Dispatch<React.SetStateAction<Passenger[]>>, idx: number, patch: Partial<Passenger>) {
   setter((prev) => prev.map((p, i) => (i === idx ? { ...p, ...patch } : p)));
 }
+
+function tomorrowISO() {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
