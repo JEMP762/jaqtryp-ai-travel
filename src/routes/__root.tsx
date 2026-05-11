@@ -123,7 +123,12 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <I18nProvider>
+        <AuthProvider>
+          <Outlet />
+          <Toaster position="top-right" theme="dark" richColors closeButton />
+        </AuthProvider>
+      </I18nProvider>
     </QueryClientProvider>
   );
 }
