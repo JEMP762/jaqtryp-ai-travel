@@ -144,6 +144,51 @@ export type Database = {
         }
         Relationships: []
       }
+      flight_orders: {
+        Row: {
+          booking_reference: string | null
+          created_at: string
+          duffel_order_id: string
+          id: string
+          passengers: Json
+          raw: Json | null
+          slices: Json
+          status: string
+          total_amount: number | null
+          total_currency: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          booking_reference?: string | null
+          created_at?: string
+          duffel_order_id: string
+          id?: string
+          passengers?: Json
+          raw?: Json | null
+          slices?: Json
+          status?: string
+          total_amount?: number | null
+          total_currency?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          booking_reference?: string | null
+          created_at?: string
+          duffel_order_id?: string
+          id?: string
+          passengers?: Json
+          raw?: Json | null
+          slices?: Json
+          status?: string
+          total_amount?: number | null
+          total_currency?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       itineraries: {
         Row: {
           activities: Json
