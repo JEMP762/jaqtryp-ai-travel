@@ -71,14 +71,14 @@ function FlightsPage() {
   const createOrder = useServerFn(createFlightOrder);
   const listOrders = useServerFn(listFlightOrders);
 
-  const [form, setForm] = useState({
+  const [form, setForm] = useState(() => ({
     origin: "GRU",
     destination: "JFK",
-    departure_date: "",
+    departure_date: tomorrowISO(),
     return_date: "",
     adults: 1,
     cabin_class: "economy" as "economy" | "premium_economy" | "business" | "first",
-  });
+  }));
   const [offers, setOffers] = useState<Offer[]>([]);
   const [selected, setSelected] = useState<Offer | null>(null);
   const [confirmed, setConfirmed] = useState<{ booking_reference: string; total_amount: string; total_currency: string } | null>(null);
