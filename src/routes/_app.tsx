@@ -11,6 +11,7 @@ import {
   MessageSquare,
   Languages,
   Plane,
+  BedDouble,
   LogOut,
   Globe2,
 } from "lucide-react";
