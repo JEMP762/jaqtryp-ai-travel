@@ -1,9 +1,21 @@
-import { createServerFn } from "@tanstack/react-start";
+import { createMiddleware, createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
 
 const DUFFEL_BASE = "https://api.duffel.com";
 const DUFFEL_VERSION = "v2";
+
+const withSupabaseAuthHeader = createMiddleware({ type: "function" }).client(
+  async ({ next }) => {
+    if (typeof window === "undefined") return next();
+    const { data } = await supabase.auth.getSession();
+    const token = data.session?.access_token;
+    return next(
+      token ? { headers: { Authorization: `Bearer ${token}` } } : undefined,
+    );
+  },
+);
 
 async function duffelFetch(path: string, init: RequestInit = {}) {
   const key = process.env.DUFFEL_API_KEY;
@@ -131,7 +143,7 @@ const CreateOrderSchema = z.object({
 });
 
 export const createFlightOrder = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
+  .middleware([withSupabaseAuthHeader, requireSupabaseAuth])
   .inputValidator((input: unknown) => CreateOrderSchema.parse(input))
   .handler(async ({ data, context }) => {
     // Re-fetch offer to know amount/currency
@@ -181,7 +193,7 @@ export const createFlightOrder = createServerFn({ method: "POST" })
   });
 
 export const listFlightOrders = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
+  .middleware([withSupabaseAuthHeader, requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase } = context;
     const { data, error } = await supabase
