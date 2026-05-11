@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { createClientOnlyFn } from "@tanstack/react-start";
 import {
   Outlet,
   Link,
@@ -12,11 +13,14 @@ import appCss from "../styles.css?url";
 import { I18nProvider } from "@/lib/i18n/I18nProvider";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
-if (typeof window !== "undefined") {
+
+const installServerFnAuthFetch = createClientOnlyFn(() => {
   import("@/integrations/supabase/server-fn-fetch.client").then((m) =>
     m.installServerFnAuthFetch()
   );
-}
+});
+
+installServerFnAuthFetch();
 
 function NotFoundComponent() {
   return (
