@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowRightLeft, Languages, Loader2, Volume2 } from "lucide-react";
+import { ArrowRightLeft, Languages, Loader2, Mic, MicOff, Volume2 } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -18,18 +18,22 @@ export const Route = createFileRoute("/_app/translator")({
 });
 
 const LANGS = [
-  { code: "pt", name: "Português" },
-  { code: "en", name: "English" },
-  { code: "es", name: "Español" },
-  { code: "fr", name: "Français" },
-  { code: "it", name: "Italiano" },
-  { code: "de", name: "Deutsch" },
-  { code: "ja", name: "日本語" },
-  { code: "zh", name: "中文" },
-  { code: "ko", name: "한국어" },
-  { code: "ar", name: "العربية" },
-  { code: "ru", name: "Русский" },
+  { code: "pt", name: "Português", bcp47: "pt-BR" },
+  { code: "en", name: "English", bcp47: "en-US" },
+  { code: "es", name: "Español", bcp47: "es-ES" },
+  { code: "fr", name: "Français", bcp47: "fr-FR" },
+  { code: "it", name: "Italiano", bcp47: "it-IT" },
+  { code: "de", name: "Deutsch", bcp47: "de-DE" },
+  { code: "ja", name: "日本語", bcp47: "ja-JP" },
+  { code: "zh", name: "中文", bcp47: "zh-CN" },
+  { code: "ko", name: "한국어", bcp47: "ko-KR" },
+  { code: "ar", name: "العربية", bcp47: "ar-SA" },
+  { code: "ru", name: "Русский", bcp47: "ru-RU" },
 ];
+
+function bcp47Of(code: string) {
+  return LANGS.find((l) => l.code === code)?.bcp47 ?? code;
+}
 
 function TranslatorPage() {
   const { t } = useI18n();
@@ -38,6 +42,8 @@ function TranslatorPage() {
   const [src, setSrc] = React.useState("");
   const [out, setOut] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+  const [listening, setListening] = React.useState(false);
+  const recognitionRef = React.useRef<any>(null);
 
   const swap = () => {
     setFrom(to);
@@ -46,24 +52,29 @@ function TranslatorPage() {
     setOut(src);
   };
 
+  const translateText = async (text: string, fromCode: string, toCode: string) => {
+    const fromName = LANGS.find((l) => l.code === fromCode)?.name ?? fromCode;
+    const toName = LANGS.find((l) => l.code === toCode)?.name ?? toCode;
+    const resp = await fetch("/api/ai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        system: `You are a professional translator. Translate from ${fromName} to ${toName}. Return ONLY the translation, no explanations, no quotes.`,
+        prompt: text,
+      }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(data.error || "Erro");
+    return (data.text as string) ?? "";
+  };
+
   const translate = async () => {
     if (!src.trim() || loading) return;
     setLoading(true);
     setOut("");
     try {
-      const fromName = LANGS.find((l) => l.code === from)?.name ?? from;
-      const toName = LANGS.find((l) => l.code === to)?.name ?? to;
-      const resp = await fetch("/api/ai", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          system: `You are a professional translator. Translate from ${fromName} to ${toName}. Return ONLY the translation, no explanations, no quotes.`,
-          prompt: src,
-        }),
-      });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || "Erro");
-      setOut((data.text as string) ?? "");
+      const res = await translateText(src, from, to);
+      setOut(res);
     } catch (e) {
       toast.error((e as Error).message);
     } finally {
@@ -72,10 +83,66 @@ function TranslatorPage() {
   };
 
   const speak = (text: string, lang: string) => {
-    if (typeof window === "undefined" || !window.speechSynthesis) return;
+    if (typeof window === "undefined" || !window.speechSynthesis) {
+      toast.error("Seu navegador não suporta áudio");
+      return;
+    }
+    window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = lang;
+    u.lang = bcp47Of(lang);
     window.speechSynthesis.speak(u);
+  };
+
+  const startListening = () => {
+    if (typeof window === "undefined") return;
+    const SR =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) {
+      toast.error("Seu navegador não suporta reconhecimento de voz. Use Chrome/Edge.");
+      return;
+    }
+    if (listening) {
+      recognitionRef.current?.stop();
+      return;
+    }
+    const rec = new SR();
+    rec.lang = bcp47Of(from);
+    rec.interimResults = true;
+    rec.continuous = false;
+    let finalText = "";
+    rec.onresult = (e: any) => {
+      let interim = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const r = e.results[i];
+        if (r.isFinal) finalText += r[0].transcript;
+        else interim += r[0].transcript;
+      }
+      setSrc((finalText + interim).trim());
+    };
+    rec.onerror = (e: any) => {
+      toast.error("Erro no microfone: " + (e.error || "desconhecido"));
+      setListening(false);
+    };
+    rec.onend = async () => {
+      setListening(false);
+      const text = (finalText || "").trim();
+      if (!text) return;
+      setLoading(true);
+      setOut("");
+      try {
+        const res = await translateText(text, from, to);
+        setOut(res);
+        // Auto fala a tradução
+        setTimeout(() => speak(res, to), 200);
+      } catch (err) {
+        toast.error((err as Error).message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    recognitionRef.current = rec;
+    setListening(true);
+    rec.start();
   };
 
   return (
@@ -86,7 +153,7 @@ function TranslatorPage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold">{t("dash.translator")}</h1>
-          <p className="text-sm text-muted-foreground">100+ idiomas com IA</p>
+          <p className="text-sm text-muted-foreground">100+ idiomas com IA · fale e ouça</p>
         </div>
       </div>
 
@@ -105,19 +172,31 @@ function TranslatorPage() {
                 ))}
               </SelectContent>
             </Select>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => speak(src, from)}
-              disabled={!src}
-            >
-              <Volume2 className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant={listening ? "default" : "ghost"}
+                size="icon"
+                onClick={startListening}
+                title="Falar"
+                className={listening ? "bg-gradient-primary shadow-glow" : ""}
+              >
+                {listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => speak(src, from)}
+                disabled={!src}
+                title="Ouvir"
+              >
+                <Volume2 className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
           <Textarea
             value={src}
             onChange={(e) => setSrc(e.target.value)}
-            placeholder="Digite o texto..."
+            placeholder={listening ? "Ouvindo..." : "Digite ou fale..."}
             rows={8}
             className="resize-none border-0 bg-transparent focus-visible:ring-0"
           />
@@ -148,6 +227,7 @@ function TranslatorPage() {
               size="icon"
               onClick={() => speak(out, to)}
               disabled={!out}
+              title="Ouvir tradução"
             >
               <Volume2 className="h-4 w-4" />
             </Button>
@@ -164,7 +244,10 @@ function TranslatorPage() {
         </div>
       </div>
 
-      <div className="mt-4 flex justify-end">
+      <div className="mt-4 flex items-center justify-between gap-3">
+        <p className="text-xs text-muted-foreground">
+          Toque no microfone para falar — traduzimos e falamos a resposta automaticamente.
+        </p>
         <Button
           onClick={translate}
           disabled={loading || !src.trim()}

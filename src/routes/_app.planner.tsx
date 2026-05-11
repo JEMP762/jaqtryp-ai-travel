@@ -7,37 +7,67 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 
 export const Route = createFileRoute("/_app/planner")({
   component: PlannerPage,
 });
 
+const CURRENCIES = [
+  { code: "BRL", label: "Real (R$)", symbol: "R$" },
+  { code: "USD", label: "Dólar (US$)", symbol: "US$" },
+  { code: "EUR", label: "Euro (€)", symbol: "€" },
+  { code: "GBP", label: "Libra (£)", symbol: "£" },
+  { code: "ARS", label: "Peso Argentino ($)", symbol: "AR$" },
+  { code: "CLP", label: "Peso Chileno ($)", symbol: "CL$" },
+  { code: "JPY", label: "Iene (¥)", symbol: "¥" },
+  { code: "CHF", label: "Franco Suíço (CHF)", symbol: "CHF" },
+  { code: "CAD", label: "Dólar Canadense (C$)", symbol: "C$" },
+  { code: "AUD", label: "Dólar Australiano (A$)", symbol: "A$" },
+];
+
 function PlannerPage() {
   const { lang } = useI18n();
   const [destination, setDestination] = React.useState("");
-  const [days, setDays] = React.useState(5);
+  const [days, setDays] = React.useState<string>("");
   const [budget, setBudget] = React.useState("");
+  const [currency, setCurrency] = React.useState("BRL");
   const [interests, setInterests] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [plan, setPlan] = React.useState("");
+
 
   const generate = async () => {
     if (!destination.trim()) {
       toast.error("Informe um destino");
       return;
     }
+    const nDays = Number(days);
+    if (!nDays || nDays < 1) {
+      toast.error("Informe a quantidade de dias");
+      return;
+    }
     setLoading(true);
     setPlan("");
     try {
+      const symbol = CURRENCIES.find((c) => c.code === currency)?.symbol ?? currency;
+      const budgetText = budget ? `${symbol} ${budget} (${currency})` : (lang === "en" ? "not specified" : "não informado");
       const system =
         lang === "en"
-          ? "You are an expert travel planner. Build a clear, well-structured day-by-day itinerary in English using markdown (## Day 1, bullet lists). Include morning/afternoon/evening, restaurant ideas, transport tips, and a budget summary at the end."
-          : "Você é um planejador de viagens especialista. Monte um roteiro dia a dia claro e bem estruturado em português usando markdown (## Dia 1, listas). Inclua manhã/tarde/noite, ideias de restaurantes, dicas de transporte e um resumo de orçamento no final.";
+          ? `You are an expert travel planner. Build a clear, well-structured day-by-day itinerary in English using markdown (## Day 1, bullet lists). Include morning/afternoon/evening, restaurant ideas, transport tips, and a budget summary at the end. ALL prices and the budget summary MUST be in ${currency} (${symbol}).`
+          : `Você é um planejador de viagens especialista. Monte um roteiro dia a dia claro e bem estruturado em português usando markdown (## Dia 1, listas). Inclua manhã/tarde/noite, ideias de restaurantes, dicas de transporte e um resumo de orçamento no final. TODOS os preços e o resumo de orçamento DEVEM estar em ${currency} (${symbol}).`;
       const prompt =
         lang === "en"
-          ? `Plan a ${days}-day trip to ${destination}. Budget: ${budget || "not specified"}. Interests: ${interests || "general"}.`
-          : `Planeje uma viagem de ${days} dias para ${destination}. Orçamento: ${budget || "não informado"}. Interesses: ${interests || "geral"}.`;
+          ? `Plan a ${nDays}-day trip to ${destination}. Budget: ${budgetText}. Interests: ${interests || "general"}.`
+          : `Planeje uma viagem de ${nDays} dias para ${destination}. Orçamento: ${budgetText}. Interesses: ${interests || "geral"}.`;
+
 
       const resp = await fetch("/api/ai", {
         method: "POST",
@@ -82,20 +112,38 @@ function PlannerPage() {
               <Input
                 type="number"
                 min={1}
-                max={30}
+                max={60}
                 value={days}
-                onChange={(e) => setDays(Number(e.target.value) || 1)}
+                onChange={(e) => setDays(e.target.value)}
+                placeholder="Ex: 7"
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Orçamento</Label>
-              <Input
-                value={budget}
-                onChange={(e) => setBudget(e.target.value)}
-                placeholder="US$ 2000"
-              />
+              <Label>Moeda</Label>
+              <Select value={currency} onValueChange={setCurrency}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
+          <div className="space-y-1.5">
+            <Label>Orçamento ({CURRENCIES.find((c) => c.code === currency)?.symbol})</Label>
+            <Input
+              value={budget}
+              onChange={(e) => setBudget(e.target.value)}
+              placeholder={`Ex: ${currency === "BRL" ? "10000" : "2000"}`}
+              inputMode="numeric"
+            />
+          </div>
+
           <div className="space-y-1.5">
             <Label>Interesses</Label>
             <Textarea

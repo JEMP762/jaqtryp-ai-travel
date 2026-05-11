@@ -98,8 +98,27 @@ function FlightsPage() {
     retry: false,
   });
 
+  async function unwrapError(e: any): Promise<string> {
+    try {
+      if (e instanceof Response) {
+        const txt = await e.text();
+        return txt || `Erro ${e.status}`;
+      }
+      if (e?.message) return e.message;
+      return typeof e === "string" ? e : "Erro inesperado";
+    } catch {
+      return "Erro inesperado";
+    }
+  }
+
   const searchMut = useMutation({
-    mutationFn: async () => search({ data: form }),
+    mutationFn: async () => {
+      try {
+        return await search({ data: form });
+      } catch (e) {
+        throw new Error(await unwrapError(e));
+      }
+    },
     onSuccess: (data) => {
       setOffers(data.offers);
       setSelected(null);
@@ -112,7 +131,11 @@ function FlightsPage() {
   const orderMut = useMutation({
     mutationFn: async () => {
       if (!selected) throw new Error("Selecione uma oferta");
-      return createOrder({ data: { offer_id: selected.id, passengers } });
+      try {
+        return await createOrder({ data: { offer_id: selected.id, passengers } });
+      } catch (e) {
+        throw new Error(await unwrapError(e));
+      }
     },
     onSuccess: (data) => {
       setConfirmed(data);
@@ -121,6 +144,7 @@ function FlightsPage() {
     },
     onError: (e: any) => toast.error(e.message || "Falha ao reservar"),
   });
+
 
   function selectOffer(o: Offer) {
     setSelected(o);
