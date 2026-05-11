@@ -49,17 +49,25 @@ function PlannerPage() {
       toast.error("Informe um destino");
       return;
     }
+    const nDays = Number(days);
+    if (!nDays || nDays < 1) {
+      toast.error("Informe a quantidade de dias");
+      return;
+    }
     setLoading(true);
     setPlan("");
     try {
+      const symbol = CURRENCIES.find((c) => c.code === currency)?.symbol ?? currency;
+      const budgetText = budget ? `${symbol} ${budget} (${currency})` : (lang === "en" ? "not specified" : "não informado");
       const system =
         lang === "en"
-          ? "You are an expert travel planner. Build a clear, well-structured day-by-day itinerary in English using markdown (## Day 1, bullet lists). Include morning/afternoon/evening, restaurant ideas, transport tips, and a budget summary at the end."
-          : "Você é um planejador de viagens especialista. Monte um roteiro dia a dia claro e bem estruturado em português usando markdown (## Dia 1, listas). Inclua manhã/tarde/noite, ideias de restaurantes, dicas de transporte e um resumo de orçamento no final.";
+          ? `You are an expert travel planner. Build a clear, well-structured day-by-day itinerary in English using markdown (## Day 1, bullet lists). Include morning/afternoon/evening, restaurant ideas, transport tips, and a budget summary at the end. ALL prices and the budget summary MUST be in ${currency} (${symbol}).`
+          : `Você é um planejador de viagens especialista. Monte um roteiro dia a dia claro e bem estruturado em português usando markdown (## Dia 1, listas). Inclua manhã/tarde/noite, ideias de restaurantes, dicas de transporte e um resumo de orçamento no final. TODOS os preços e o resumo de orçamento DEVEM estar em ${currency} (${symbol}).`;
       const prompt =
         lang === "en"
-          ? `Plan a ${days}-day trip to ${destination}. Budget: ${budget || "not specified"}. Interests: ${interests || "general"}.`
-          : `Planeje uma viagem de ${days} dias para ${destination}. Orçamento: ${budget || "não informado"}. Interesses: ${interests || "geral"}.`;
+          ? `Plan a ${nDays}-day trip to ${destination}. Budget: ${budgetText}. Interests: ${interests || "general"}.`
+          : `Planeje uma viagem de ${nDays} dias para ${destination}. Orçamento: ${budgetText}. Interesses: ${interests || "geral"}.`;
+
 
       const resp = await fetch("/api/ai", {
         method: "POST",
