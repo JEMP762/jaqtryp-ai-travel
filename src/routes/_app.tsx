@@ -27,13 +27,15 @@ export const Route = createFileRoute("/_app")({
 
 function AppShell() {
   const { user, loading } = useAuth();
-  const navGuard = useNavigate();
+  const { t, lang, setLang } = useI18n();
+  const nav = useNavigate();
+  const path = useRouterState({ select: (s) => s.location.pathname });
 
   React.useEffect(() => {
     if (!loading && !user) {
-      navGuard({ to: "/login" });
+      nav({ to: "/login" });
     }
-  }, [loading, user, navGuard]);
+  }, [loading, user, nav]);
 
   if (loading || !user) {
     return (
@@ -42,9 +44,7 @@ function AppShell() {
       </div>
     );
   }
-  const { t, lang, setLang } = useI18n();
-  const nav = useNavigate();
-  const path = useRouterState({ select: (s) => s.location.pathname });
+
 
   const items = [
     { to: "/dashboard", icon: LayoutDashboard, label: t("dash.welcome") },
