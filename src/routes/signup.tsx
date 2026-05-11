@@ -24,13 +24,31 @@ function SignupPage() {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+  const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
 
   React.useEffect(() => {
     if (user) nav({ to: "/dashboard" });
   }, [user, nav]);
 
+  const friendlyError = (err: any): string => {
+    const code = err?.code || err?.error_code;
+    const msg = err?.message || "";
+    if (code === "weak_password" || /weak|pwned|leaked/i.test(msg))
+      return "Esta senha é muito fraca ou apareceu em vazamentos públicos. Use uma senha forte com letras, números e símbolos (mín. 8 caracteres).";
+    if (code === "user_already_exists" || /already registered|already exists/i.test(msg))
+      return "Já existe uma conta com este e-mail. Tente entrar.";
+    if (/invalid.*email/i.test(msg)) return "E-mail inválido.";
+    if (/password.*should be at least/i.test(msg)) return "Senha muito curta — use no mínimo 8 caracteres.";
+    return msg || "Não foi possível criar sua conta. Tente novamente.";
+  };
+
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg(null);
+    if (password.length < 8) {
+      setErrorMsg("A senha deve ter no mínimo 8 caracteres.");
+      return;
+    }
     setLoading(true);
     const { error } = await supabase.auth.signUp({
       email,
@@ -42,7 +60,9 @@ function SignupPage() {
     });
     setLoading(false);
     if (error) {
-      toast.error(error.message);
+      const msg = friendlyError(error);
+      setErrorMsg(msg);
+      toast.error(msg);
     } else {
       toast.success("Conta criada! Verifique seu e-mail para confirmar.");
       nav({ to: "/login" });
@@ -102,11 +122,19 @@ function SignupPage() {
             id="password"
             type="password"
             required
-            minLength={6}
+            minLength={8}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+          <p className="text-xs text-muted-foreground">
+            Mínimo 8 caracteres. Evite senhas comuns ou já vazadas.
+          </p>
         </div>
+        {errorMsg && (
+          <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+            {errorMsg}
+          </div>
+        )}
         <Button
           type="submit"
           disabled={loading}
