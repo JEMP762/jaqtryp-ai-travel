@@ -2,7 +2,6 @@ import {
   createFileRoute,
   Link,
   Outlet,
-  redirect,
   useNavigate,
   useRouterState,
 } from "@tanstack/react-router";
@@ -23,15 +22,26 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_app")({
-  beforeLoad: async () => {
-    const { data } = await supabase.auth.getSession();
-    if (!data.session) throw redirect({ to: "/login" });
-  },
   component: AppShell,
 });
 
 function AppShell() {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
+  const navGuard = useNavigate();
+
+  React.useEffect(() => {
+    if (!loading && !user) {
+      navGuard({ to: "/login" });
+    }
+  }, [loading, user, navGuard]);
+
+  if (loading || !user) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    );
+  }
   const { t, lang, setLang } = useI18n();
   const nav = useNavigate();
   const path = useRouterState({ select: (s) => s.location.pathname });
