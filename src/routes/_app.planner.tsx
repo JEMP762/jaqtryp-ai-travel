@@ -112,20 +112,38 @@ function PlannerPage() {
               <Input
                 type="number"
                 min={1}
-                max={30}
+                max={60}
                 value={days}
-                onChange={(e) => setDays(Number(e.target.value) || 1)}
+                onChange={(e) => setDays(e.target.value)}
+                placeholder="Ex: 7"
               />
             </div>
             <div className="space-y-1.5">
-              <Label>Orçamento</Label>
-              <Input
-                value={budget}
-                onChange={(e) => setBudget(e.target.value)}
-                placeholder="US$ 2000"
-              />
+              <Label>Moeda</Label>
+              <Select value={currency} onValueChange={setCurrency}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CURRENCIES.map((c) => (
+                    <SelectItem key={c.code} value={c.code}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
+          <div className="space-y-1.5">
+            <Label>Orçamento ({CURRENCIES.find((c) => c.code === currency)?.symbol})</Label>
+            <Input
+              value={budget}
+              onChange={(e) => setBudget(e.target.value)}
+              placeholder={`Ex: ${currency === "BRL" ? "10000" : "2000"}`}
+              inputMode="numeric"
+            />
+          </div>
+
           <div className="space-y-1.5">
             <Label>Interesses</Label>
             <Textarea
