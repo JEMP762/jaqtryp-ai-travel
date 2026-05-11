@@ -207,6 +207,7 @@ function FlightsPage() {
           <input
             type="date"
             value={form.departure_date}
+            min={tomorrowISO()}
             onChange={(e) => setForm({ ...form, departure_date: e.target.value })}
             required
             className="input"
@@ -216,6 +217,7 @@ function FlightsPage() {
           <input
             type="date"
             value={form.return_date}
+            min={form.departure_date || tomorrowISO()}
             onChange={(e) => setForm({ ...form, return_date: e.target.value })}
             className="input"
           />
