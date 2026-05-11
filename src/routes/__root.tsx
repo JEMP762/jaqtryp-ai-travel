@@ -12,6 +12,11 @@ import appCss from "../styles.css?url";
 import { I18nProvider } from "@/lib/i18n/I18nProvider";
 import { AuthProvider } from "@/hooks/useAuth";
 import { Toaster } from "@/components/ui/sonner";
+import { installServerFnAuthFetch } from "@/integrations/supabase/server-fn-fetch.client";
+
+if (typeof window !== "undefined") {
+  installServerFnAuthFetch();
+}
 
 function NotFoundComponent() {
   return (
