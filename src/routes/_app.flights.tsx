@@ -86,8 +86,14 @@ function FlightsPage() {
 
   const { user } = useAuth();
   const ordersQuery = useQuery({
-    queryKey: ["flight-orders"],
-    queryFn: () => listOrders(),
+    queryKey: ["flight-orders", user?.id],
+    queryFn: async () => {
+      try {
+        return await listOrders();
+      } catch {
+        return { orders: [] };
+      }
+    },
     enabled: !!user,
     retry: false,
   });
