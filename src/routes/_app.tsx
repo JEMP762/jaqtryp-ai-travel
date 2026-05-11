@@ -11,6 +11,7 @@ import {
   MessageSquare,
   Languages,
   Plane,
+  BedDouble,
   LogOut,
   Globe2,
 } from "lucide-react";
@@ -52,6 +53,7 @@ function AppShell() {
     { to: "/chat", icon: MessageSquare, label: t("dash.chat") },
     { to: "/translator", icon: Languages, label: t("dash.translator") },
     { to: "/flights", icon: Plane, label: "Voos" },
+    { to: "/stays", icon: BedDouble, label: "Hospedagem" },
   ] as const;
 
   const onSignOut = async () => {

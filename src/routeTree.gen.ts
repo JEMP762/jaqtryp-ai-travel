@@ -16,6 +16,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiChatRouteImport } from './routes/api.chat'
 import { Route as ApiAiRouteImport } from './routes/api.ai'
 import { Route as AppTranslatorRouteImport } from './routes/_app.translator'
+import { Route as AppStaysRouteImport } from './routes/_app.stays'
 import { Route as AppPlannerRouteImport } from './routes/_app.planner'
 import { Route as AppFlightsRouteImport } from './routes/_app.flights'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
@@ -55,6 +56,11 @@ const AppTranslatorRoute = AppTranslatorRouteImport.update({
   path: '/translator',
   getParentRoute: () => AppRoute,
 } as any)
+const AppStaysRoute = AppStaysRouteImport.update({
+  id: '/stays',
+  path: '/stays',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPlannerRoute = AppPlannerRouteImport.update({
   id: '/planner',
   path: '/planner',
@@ -84,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AppDashboardRoute
   '/flights': typeof AppFlightsRoute
   '/planner': typeof AppPlannerRoute
+  '/stays': typeof AppStaysRoute
   '/translator': typeof AppTranslatorRoute
   '/api/ai': typeof ApiAiRoute
   '/api/chat': typeof ApiChatRoute
@@ -96,6 +103,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AppDashboardRoute
   '/flights': typeof AppFlightsRoute
   '/planner': typeof AppPlannerRoute
+  '/stays': typeof AppStaysRoute
   '/translator': typeof AppTranslatorRoute
   '/api/ai': typeof ApiAiRoute
   '/api/chat': typeof ApiChatRoute
@@ -110,6 +118,7 @@ export interface FileRoutesById {
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/flights': typeof AppFlightsRoute
   '/_app/planner': typeof AppPlannerRoute
+  '/_app/stays': typeof AppStaysRoute
   '/_app/translator': typeof AppTranslatorRoute
   '/api/ai': typeof ApiAiRoute
   '/api/chat': typeof ApiChatRoute
@@ -124,6 +133,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/flights'
     | '/planner'
+    | '/stays'
     | '/translator'
     | '/api/ai'
     | '/api/chat'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/flights'
     | '/planner'
+    | '/stays'
     | '/translator'
     | '/api/ai'
     | '/api/chat'
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '/_app/dashboard'
     | '/_app/flights'
     | '/_app/planner'
+    | '/_app/stays'
     | '/_app/translator'
     | '/api/ai'
     | '/api/chat'
@@ -214,6 +226,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppTranslatorRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/stays': {
+      id: '/_app/stays'
+      path: '/stays'
+      fullPath: '/stays'
+      preLoaderRoute: typeof AppStaysRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/planner': {
       id: '/_app/planner'
       path: '/planner'
@@ -250,6 +269,7 @@ interface AppRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
   AppFlightsRoute: typeof AppFlightsRoute
   AppPlannerRoute: typeof AppPlannerRoute
+  AppStaysRoute: typeof AppStaysRoute
   AppTranslatorRoute: typeof AppTranslatorRoute
 }
 
@@ -258,6 +278,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
   AppFlightsRoute: AppFlightsRoute,
   AppPlannerRoute: AppPlannerRoute,
+  AppStaysRoute: AppStaysRoute,
   AppTranslatorRoute: AppTranslatorRoute,
 }
 
@@ -274,13 +295,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

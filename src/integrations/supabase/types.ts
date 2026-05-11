@@ -263,6 +263,60 @@ export type Database = {
         }
         Relationships: []
       }
+      stay_orders: {
+        Row: {
+          accommodation_name: string | null
+          check_in_date: string | null
+          check_out_date: string | null
+          created_at: string
+          duffel_booking_id: string
+          guests: number | null
+          id: string
+          raw: Json | null
+          reference: string | null
+          rooms: number | null
+          status: string
+          total_amount: number | null
+          total_currency: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accommodation_name?: string | null
+          check_in_date?: string | null
+          check_out_date?: string | null
+          created_at?: string
+          duffel_booking_id: string
+          guests?: number | null
+          id?: string
+          raw?: Json | null
+          reference?: string | null
+          rooms?: number | null
+          status?: string
+          total_amount?: number | null
+          total_currency?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accommodation_name?: string | null
+          check_in_date?: string | null
+          check_out_date?: string | null
+          created_at?: string
+          duffel_booking_id?: string
+          guests?: number | null
+          id?: string
+          raw?: Json | null
+          reference?: string | null
+          rooms?: number | null
+          status?: string
+          total_amount?: number | null
+          total_currency?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       translations_history: {
         Row: {
           context_explanation: string | null
