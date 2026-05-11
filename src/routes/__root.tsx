@@ -8,6 +8,7 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import * as React from "react";
 
 import appCss from "../styles.css?url";
 import { I18nProvider } from "@/lib/i18n/I18nProvider";
@@ -49,8 +50,6 @@ const installServerFnAuthFetch = createClientOnlyFn(() => {
     return originalFetch(input, init);
   };
 });
-
-installServerFnAuthFetch();
 
 function NotFoundComponent() {
   return (
@@ -159,6 +158,10 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  React.useEffect(() => {
+    installServerFnAuthFetch();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
