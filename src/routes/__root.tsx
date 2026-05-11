@@ -9,6 +9,9 @@ import {
 } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
+import { I18nProvider } from "@/lib/i18n/I18nProvider";
+import { AuthProvider } from "@/hooks/useAuth";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -72,19 +75,26 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Jaqtryp AI — Smart travel powered by AI" },
+      {
+        name: "description",
+        content:
+          "Jaqtryp AI is the global travel super app: AI itineraries, flights, translation, real-time guide and more.",
+      },
+      { name: "author", content: "Jaqtryp AI" },
+      { property: "og:title", content: "Jaqtryp AI — Smart travel powered by AI" },
+      {
+        property: "og:description",
+        content: "Plan, translate and travel with cutting-edge AI.",
+      },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
+      { rel: "stylesheet", href: appCss },
       {
         rel: "stylesheet",
-        href: appCss,
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap",
       },
     ],
   }),
@@ -113,7 +123,12 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
+      <I18nProvider>
+        <AuthProvider>
+          <Outlet />
+          <Toaster position="top-right" theme="dark" richColors closeButton />
+        </AuthProvider>
+      </I18nProvider>
     </QueryClientProvider>
   );
 }
