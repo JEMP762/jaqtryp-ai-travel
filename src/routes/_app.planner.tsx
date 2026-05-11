@@ -7,20 +7,42 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 
 export const Route = createFileRoute("/_app/planner")({
   component: PlannerPage,
 });
 
+const CURRENCIES = [
+  { code: "BRL", label: "Real (R$)", symbol: "R$" },
+  { code: "USD", label: "Dólar (US$)", symbol: "US$" },
+  { code: "EUR", label: "Euro (€)", symbol: "€" },
+  { code: "GBP", label: "Libra (£)", symbol: "£" },
+  { code: "ARS", label: "Peso Argentino ($)", symbol: "AR$" },
+  { code: "CLP", label: "Peso Chileno ($)", symbol: "CL$" },
+  { code: "JPY", label: "Iene (¥)", symbol: "¥" },
+  { code: "CHF", label: "Franco Suíço (CHF)", symbol: "CHF" },
+  { code: "CAD", label: "Dólar Canadense (C$)", symbol: "C$" },
+  { code: "AUD", label: "Dólar Australiano (A$)", symbol: "A$" },
+];
+
 function PlannerPage() {
   const { lang } = useI18n();
   const [destination, setDestination] = React.useState("");
-  const [days, setDays] = React.useState(5);
+  const [days, setDays] = React.useState<string>("");
   const [budget, setBudget] = React.useState("");
+  const [currency, setCurrency] = React.useState("BRL");
   const [interests, setInterests] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [plan, setPlan] = React.useState("");
+
 
   const generate = async () => {
     if (!destination.trim()) {
