@@ -12,10 +12,18 @@ export const Route = createFileRoute("/api/ai")({
           system?: string;
           prompt?: string;
           model?: string;
+          image?: string; // data URL (data:image/...;base64,...)
         } | null;
-        if (!body?.prompt) {
+        if (!body?.prompt && !body?.image) {
           return new Response(JSON.stringify({ error: "Missing prompt" }), { status: 400 });
         }
+
+        const userContent: any = body.image
+          ? [
+              { type: "text", text: body.prompt || "" },
+              { type: "image_url", image_url: { url: body.image } },
+            ]
+          : body.prompt;
 
         const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
@@ -24,10 +32,10 @@ export const Route = createFileRoute("/api/ai")({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: body.model || "google/gemini-3-flash-preview",
+            model: body.model || (body.image ? "google/gemini-2.5-flash" : "google/gemini-3-flash-preview"),
             messages: [
               ...(body.system ? [{ role: "system", content: body.system }] : []),
-              { role: "user", content: body.prompt },
+              { role: "user", content: userContent },
             ],
           }),
         });

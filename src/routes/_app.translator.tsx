@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowRightLeft, Languages, Loader2, Mic, MicOff, Volume2 } from "lucide-react";
+import { ArrowRightLeft, Camera, Languages, Loader2, Mic, MicOff, ScanLine, Volume2 } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,63 @@ function TranslatorPage() {
   const [loading, setLoading] = React.useState(false);
   const [listening, setListening] = React.useState(false);
   const recognitionRef = React.useRef<any>(null);
+  const cameraInputRef = React.useRef<HTMLInputElement>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const [ocrLoading, setOcrLoading] = React.useState(false);
+
+  const fileToDataUrl = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(r.result as string);
+      r.onerror = () => reject(new Error("Falha ao ler arquivo"));
+      r.readAsDataURL(file);
+    });
+
+  const handleImageOcr = async (file: File) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Envie uma imagem (foto ou digitalização).");
+      return;
+    }
+    setOcrLoading(true);
+    setOut("");
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const fromName = LANGS.find((l) => l.code === from)?.name ?? from;
+      const toName = LANGS.find((l) => l.code === to)?.name ?? to;
+      const resp = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          system:
+            "You are an OCR + translation assistant. Extract ALL readable text from the image, then translate it. Return ONLY a JSON object with two fields: {\"original\": string, \"translation\": string}. No markdown, no code fences.",
+          prompt: `Extract the text from the image (source language: ${fromName}) and translate it to ${toName}.`,
+          image: dataUrl,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || "Erro");
+      const raw = (data.text as string) ?? "";
+      const cleaned = raw.replace(/```json|```/g, "").trim();
+      let original = "";
+      let translation = "";
+      try {
+        const parsed = JSON.parse(cleaned);
+        original = parsed.original ?? "";
+        translation = parsed.translation ?? "";
+      } catch {
+        translation = cleaned;
+      }
+      if (original) setSrc(original);
+      setOut(translation || cleaned);
+      toast.success("Texto extraído e traduzido!");
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setOcrLoading(false);
+    }
+  };
+
 
   const swap = () => {
     setFrom(to);
@@ -174,6 +231,24 @@ function TranslatorPage() {
             </Select>
             <div className="flex items-center gap-1">
               <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => cameraInputRef.current?.click()}
+                disabled={ocrLoading}
+                title="Tirar foto e traduzir"
+              >
+                {ocrLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={ocrLoading}
+                title="Enviar imagem/scanner e traduzir"
+              >
+                <ScanLine className="h-4 w-4" />
+              </Button>
+              <Button
                 variant={listening ? "default" : "ghost"}
                 size="icon"
                 onClick={startListening}
@@ -191,6 +266,29 @@ function TranslatorPage() {
               >
                 <Volume2 className="h-4 w-4" />
               </Button>
+              <input
+                ref={cameraInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleImageOcr(f);
+                  e.target.value = "";
+                }}
+              />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleImageOcr(f);
+                  e.target.value = "";
+                }}
+              />
             </div>
           </div>
           <Textarea
