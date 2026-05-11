@@ -15,6 +15,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiChatRouteImport } from './routes/api.chat'
 import { Route as ApiAiRouteImport } from './routes/api.ai'
+import { Route as AppTranslatorRouteImport } from './routes/_app.translator'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppChatRouteImport } from './routes/_app.chat'
 
@@ -47,6 +48,11 @@ const ApiAiRoute = ApiAiRouteImport.update({
   path: '/api/ai',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AppTranslatorRoute = AppTranslatorRouteImport.update({
+  id: '/translator',
+  path: '/translator',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -64,6 +70,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/chat': typeof AppChatRoute
   '/dashboard': typeof AppDashboardRoute
+  '/translator': typeof AppTranslatorRoute
   '/api/ai': typeof ApiAiRoute
   '/api/chat': typeof ApiChatRoute
 }
@@ -73,6 +80,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/chat': typeof AppChatRoute
   '/dashboard': typeof AppDashboardRoute
+  '/translator': typeof AppTranslatorRoute
   '/api/ai': typeof ApiAiRoute
   '/api/chat': typeof ApiChatRoute
 }
@@ -84,6 +92,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/_app/chat': typeof AppChatRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/translator': typeof AppTranslatorRoute
   '/api/ai': typeof ApiAiRoute
   '/api/chat': typeof ApiChatRoute
 }
@@ -95,6 +104,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/chat'
     | '/dashboard'
+    | '/translator'
     | '/api/ai'
     | '/api/chat'
   fileRoutesByTo: FileRoutesByTo
@@ -104,6 +114,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/chat'
     | '/dashboard'
+    | '/translator'
     | '/api/ai'
     | '/api/chat'
   id:
@@ -114,6 +125,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/_app/chat'
     | '/_app/dashboard'
+    | '/_app/translator'
     | '/api/ai'
     | '/api/chat'
   fileRoutesById: FileRoutesById
@@ -171,6 +183,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAiRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_app/translator': {
+      id: '/_app/translator'
+      path: '/translator'
+      fullPath: '/translator'
+      preLoaderRoute: typeof AppTranslatorRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/dashboard': {
       id: '/_app/dashboard'
       path: '/dashboard'
@@ -191,11 +210,13 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppChatRoute: typeof AppChatRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppTranslatorRoute: typeof AppTranslatorRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppChatRoute: AppChatRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppTranslatorRoute: AppTranslatorRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
