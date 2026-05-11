@@ -68,6 +68,7 @@ function fmtMoney(amount: string, currency: string) {
 function FlightsPage() {
   const search = useServerFn(searchFlights);
   const createOrder = useServerFn(createFlightOrder);
+  const listOrders = useServerFn(listFlightOrders);
 
   const [form, setForm] = useState({
     origin: "GRU",
@@ -84,7 +85,7 @@ function FlightsPage() {
 
   const ordersQuery = useQuery({
     queryKey: ["flight-orders"],
-    queryFn: () => useServerFn(listFlightOrders)(),
+    queryFn: () => listOrders(),
   });
 
   const searchMut = useMutation({
