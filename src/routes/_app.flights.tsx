@@ -84,9 +84,12 @@ function FlightsPage() {
   const [confirmed, setConfirmed] = useState<{ booking_reference: string; total_amount: string; total_currency: string } | null>(null);
   const [passengers, setPassengers] = useState<Passenger[]>([]);
 
+  const { user } = useAuth();
   const ordersQuery = useQuery({
     queryKey: ["flight-orders"],
     queryFn: () => listOrders(),
+    enabled: !!user,
+    retry: false,
   });
 
   const searchMut = useMutation({
