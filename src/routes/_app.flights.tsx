@@ -5,6 +5,7 @@ import { useState } from "react";
 import { Plane, Search, Loader2, ArrowRight, Clock, Ticket, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { searchFlights, createFlightOrder, listFlightOrders } from "@/lib/duffel.functions";
+import { useAuth } from "@/hooks/useAuth";
 
 export const Route = createFileRoute("/_app/flights")({
   component: FlightsPage,
