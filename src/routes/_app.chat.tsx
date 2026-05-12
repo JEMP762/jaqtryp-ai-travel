@@ -111,16 +111,37 @@ function ChatPage() {
   const suggestions =
     lang === "pt"
       ? [
+          "💰 Esse preço é justo? Café da manhã €28 perto da Torre Eiffel",
+          "🚖 Táxi do aeroporto de Roma ao centro por €70 — armadilha?",
+          "🍝 Cardápio em 5 idiomas em Veneza, prato a €35. Vale?",
+          "🏨 Hotel R$ 1.200/noite em Buenos Aires — está caro?",
           "Roteiro de 5 dias em Lisboa com €1500",
-          "O que fazer em Tóquio em abril?",
-          "Preciso de visto para a Tailândia?",
           "Melhor época para visitar a Patagônia",
         ]
       : [
+          "💰 Is this fair? €28 breakfast near the Eiffel Tower",
+          "🚖 €70 taxi from Rome airport to downtown — trap?",
+          "🍝 5-language menu in Venice, €35 a plate. Worth it?",
+          "🏨 $240/night hotel in Buenos Aires — too expensive?",
           "5-day itinerary in Lisbon with €1500",
-          "What to do in Tokyo in April?",
-          "Do I need a visa for Thailand?",
           "Best time to visit Patagonia",
+        ];
+
+  const profiles: { id: Profile; label: string }[] =
+    lang === "pt"
+      ? [
+          { id: "economico", label: "💸 Econômico" },
+          { id: "mochileiro", label: "🎒 Mochileiro" },
+          { id: "conforto", label: "🛋️ Conforto" },
+          { id: "premium", label: "✨ Premium" },
+          { id: "luxo", label: "👑 Luxo" },
+        ]
+      : [
+          { id: "economico", label: "💸 Budget" },
+          { id: "mochileiro", label: "🎒 Backpacker" },
+          { id: "conforto", label: "🛋️ Comfort" },
+          { id: "premium", label: "✨ Premium" },
+          { id: "luxo", label: "👑 Luxury" },
         ];
 
   return (
