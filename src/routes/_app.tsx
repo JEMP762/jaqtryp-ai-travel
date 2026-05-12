@@ -12,6 +12,7 @@ import {
   Languages,
   Plane,
   BedDouble,
+  ShieldCheck,
   LogOut,
   Globe2,
 } from "lucide-react";
@@ -54,6 +55,7 @@ function AppShell() {
     { to: "/translator", icon: Languages, label: t("dash.translator") },
     { to: "/flights", icon: Plane, label: "Voos" },
     { to: "/stays", icon: BedDouble, label: "Hospedagem" },
+    { to: "/shield", icon: ShieldCheck, label: "JAQ Shield" },
   ] as const;
 
   const onSignOut = async () => {
