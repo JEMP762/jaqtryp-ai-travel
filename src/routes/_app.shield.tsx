@@ -846,17 +846,19 @@ function Widgets() {
 function ShieldDashboard() {
   const [protectionActive, setProtectionActive] = React.useState(true);
   const [scannerOpen, setScannerOpen] = React.useState(false);
+  const loc = useLiveLocation();
+  const center: [number, number] = loc.pos ?? FALLBACK_POS;
 
   return (
     <div className="relative mx-auto max-w-7xl space-y-6 px-4 py-8 md:px-10">
       <style>{`@keyframes jaq-ping { 75%, 100% { transform: scale(2.2); opacity: 0; } }`}</style>
 
-      <ShieldHeader protectionActive={protectionActive} />
+      <ShieldHeader protectionActive={protectionActive} loc={loc} />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <ScoreCard score={82} />
-          <RiskMap />
+          <RiskMap center={center} live={loc.status === "granted"} />
           <PriceWatch />
         </div>
         <div className="space-y-6">
