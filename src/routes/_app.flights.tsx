@@ -157,6 +157,16 @@ function FlightsPage() {
     onError: (e: any) => toast.error(e.message || "Falha ao reservar"),
   });
 
+  // Auto-trigger search when arriving from a deal (?auto=true)
+  const autoRan = useRef(false);
+  useEffect(() => {
+    if (sp.auto && !autoRan.current && form.origin && form.destination && form.departure_date) {
+      autoRan.current = true;
+      searchMut.mutate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sp.auto]);
+
 
   function selectOffer(o: Offer) {
     setSelected(o);
