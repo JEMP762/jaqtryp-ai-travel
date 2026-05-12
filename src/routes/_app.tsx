@@ -12,6 +12,7 @@ import {
   Languages,
   Plane,
   BedDouble,
+  Tag,
   ShieldCheck,
   LogOut,
   Globe2,
