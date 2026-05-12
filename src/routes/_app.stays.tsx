@@ -67,13 +67,32 @@ function StaysPage() {
     phone_number: "",
   });
 
+  const [apiUnavailable, setApiUnavailable] = React.useState(false);
+
+  const bookingFallback = React.useMemo(() => {
+    const q = encodeURIComponent(form.query || "");
+    return `https://www.booking.com/searchresults.html?ss=${q}&checkin=${form.check_in_date}&checkout=${form.check_out_date}&group_adults=${form.guests}`;
+  }, [form]);
+
   const search = useMutation({
     mutationFn: () => searchFn({ data: form }),
     onSuccess: (d) => {
+      setApiUnavailable(false);
       setResults(d.results);
       if (!d.results.length) toast.message("Nenhum resultado encontrado");
     },
-    onError: (e) => toast.error((e as Error).message),
+    onError: (e) => {
+      const msg = (e as Error).message || "";
+      if (msg.includes("403") || /forbidden/i.test(msg)) {
+        setApiUnavailable(true);
+        toast.error("Hospedagens indisponíveis no momento", {
+          description: "Abrindo busca no Booking.com…",
+          action: { label: "Abrir Booking", onClick: () => window.open(bookingFallback, "_blank", "noopener,noreferrer") },
+        });
+      } else {
+        toast.error(msg);
+      }
+    },
   });
 
   // Auto-trigger when arriving from a deal (?auto=true)
@@ -213,6 +232,24 @@ function StaysPage() {
           </Button>
         </div>
       </form>
+
+      {apiUnavailable && (
+        <div className="mt-6 rounded-2xl border border-border bg-card p-5 text-center">
+          <div className="mb-1 text-sm font-semibold">Reservas internas indisponíveis</div>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Nosso provedor de hospedagens está temporariamente indisponível. Reserve direto no
+            Booking.com com a mesma busca.
+          </p>
+          <a
+            href={bookingFallback}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
+          >
+            Reservar no Booking.com ↗
+          </a>
+        </div>
+      )}
 
       {/* Results */}
       <div className="mt-6 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
