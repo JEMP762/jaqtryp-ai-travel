@@ -4,6 +4,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { BedDouble, Loader2, MapPin, Search, Star } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +22,16 @@ import {
 } from "@/lib/stays.functions";
 import { useAuth } from "@/hooks/useAuth";
 
+const staysSearchSchema = z.object({
+  query: fallback(z.string(), "").default(""),
+  check_in_date: fallback(z.string(), "").default(""),
+  check_out_date: fallback(z.string(), "").default(""),
+  guests: fallback(z.number(), 0).default(0),
+  auto: fallback(z.boolean(), false).default(false),
+});
+
 export const Route = createFileRoute("/_app/stays")({
+  validateSearch: zodValidator(staysSearchSchema),
   component: StaysPage,
 });
 
