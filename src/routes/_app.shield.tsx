@@ -613,20 +613,23 @@ function Legend({ color, label }: { color: string; label: string }) {
   );
 }
 
-function AlertsFeed() {
+function AlertsFeed({ city }: { city: string | null }) {
+  const alerts = React.useMemo(() => generateAlerts(city), [city]);
   return (
     <GlassCard>
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-primary" />
-          <div className="font-semibold">Alertas ao vivo</div>
+          <div className="font-semibold">
+            Alertas ao vivo{city ? ` · ${city}` : ""}
+          </div>
         </div>
         <Badge variant="outline" className="border-primary/30 text-primary">
-          {ALERTS.length} ativos
+          {alerts.length} ativos
         </Badge>
       </div>
       <div className="space-y-3">
-        {ALERTS.map((a) => {
+        {alerts.map((a) => {
           const s = levelStyles(a.level);
           return (
             <div
