@@ -927,7 +927,7 @@ function ShieldDashboard() {
         <div className="space-y-6 lg:col-span-2">
           <ScoreCard score={82} />
           <RiskMap center={center} live={loc.status === "granted"} />
-          <PriceWatch />
+          <PriceWatch city={loc.city} countryCode={loc.countryCode} />
         </div>
         <div className="space-y-6">
           <ProtectionToggle
@@ -939,12 +939,12 @@ function ShieldDashboard() {
               );
             }}
           />
-          <AlertsFeed />
+          <AlertsFeed city={loc.city} />
         </div>
       </div>
 
-      <ScamsCarousel />
-      <Widgets />
+      <ScamsCarousel country={loc.country} />
+      <Widgets loc={loc} />
 
       <ScannerFab onClick={() => setScannerOpen(true)} />
       <ScannerSheet open={scannerOpen} onClose={() => setScannerOpen(false)} />
