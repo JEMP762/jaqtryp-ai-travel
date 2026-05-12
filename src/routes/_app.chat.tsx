@@ -60,7 +60,7 @@ function ChatPage() {
       const resp = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next, lang }),
+        body: JSON.stringify({ messages: payloadMessages, lang }),
       });
 
       if (!resp.ok || !resp.body) {
