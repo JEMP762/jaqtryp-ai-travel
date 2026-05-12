@@ -13,12 +13,14 @@ export const Route = createFileRoute("/_app/chat")({
 });
 
 type Msg = { role: "user" | "assistant"; content: string };
+type Profile = "economico" | "mochileiro" | "conforto" | "premium" | "luxo";
 
 function ChatPage() {
   const { t, lang } = useI18n();
   const [messages, setMessages] = React.useState<Msg[]>([]);
   const [input, setInput] = React.useState("");
   const [streaming, setStreaming] = React.useState(false);
+  const [profile, setProfile] = React.useState<Profile>("conforto");
   const scrollRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -33,6 +35,12 @@ function ChatPage() {
     setMessages(next);
     setInput("");
     setStreaming(true);
+
+    const profileHint: Msg = {
+      role: "user",
+      content: `[Contexto JAQ Price] Perfil de viagem do usuário: ${profile}. Adapte recomendações de preço, hospedagem e gastos a esse perfil.`,
+    };
+    const payloadMessages = [profileHint, ...next];
 
     let assistantSoFar = "";
     const upsert = (chunk: string) => {
@@ -52,7 +60,7 @@ function ChatPage() {
       const resp = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next, lang }),
+        body: JSON.stringify({ messages: payloadMessages, lang }),
       });
 
       if (!resp.ok || !resp.body) {
@@ -103,23 +111,63 @@ function ChatPage() {
   const suggestions =
     lang === "pt"
       ? [
+          "💰 Esse preço é justo? Café da manhã €28 perto da Torre Eiffel",
+          "🚖 Táxi do aeroporto de Roma ao centro por €70 — armadilha?",
+          "🍝 Cardápio em 5 idiomas em Veneza, prato a €35. Vale?",
+          "🏨 Hotel R$ 1.200/noite em Buenos Aires — está caro?",
           "Roteiro de 5 dias em Lisboa com €1500",
-          "O que fazer em Tóquio em abril?",
-          "Preciso de visto para a Tailândia?",
           "Melhor época para visitar a Patagônia",
         ]
       : [
+          "💰 Is this fair? €28 breakfast near the Eiffel Tower",
+          "🚖 €70 taxi from Rome airport to downtown — trap?",
+          "🍝 5-language menu in Venice, €35 a plate. Worth it?",
+          "🏨 $240/night hotel in Buenos Aires — too expensive?",
           "5-day itinerary in Lisbon with €1500",
-          "What to do in Tokyo in April?",
-          "Do I need a visa for Thailand?",
           "Best time to visit Patagonia",
+        ];
+
+  const profiles: { id: Profile; label: string }[] =
+    lang === "pt"
+      ? [
+          { id: "economico", label: "💸 Econômico" },
+          { id: "mochileiro", label: "🎒 Mochileiro" },
+          { id: "conforto", label: "🛋️ Conforto" },
+          { id: "premium", label: "✨ Premium" },
+          { id: "luxo", label: "👑 Luxo" },
+        ]
+      : [
+          { id: "economico", label: "💸 Budget" },
+          { id: "mochileiro", label: "🎒 Backpacker" },
+          { id: "conforto", label: "🛋️ Comfort" },
+          { id: "premium", label: "✨ Premium" },
+          { id: "luxo", label: "👑 Luxury" },
         ];
 
   return (
     <div className="mx-auto flex h-[100dvh] max-w-4xl flex-col px-4 md:px-8">
       <div className="border-b border-border py-4">
         <h1 className="text-xl font-semibold">{t("dash.chat")}</h1>
-        <p className="text-xs text-muted-foreground">{t("hero.badge")}</p>
+        <p className="text-xs text-muted-foreground">
+          {t("hero.badge")} · <span className="text-primary">JAQ Price</span>{" "}
+          {lang === "pt" ? "ativo" : "active"}
+        </p>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {profiles.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setProfile(p.id)}
+              className={cn(
+                "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                profile === p.id
+                  ? "border-primary bg-primary/15 text-primary"
+                  : "border-border bg-card/50 text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div ref={scrollRef} className="flex-1 space-y-6 overflow-y-auto py-6">
