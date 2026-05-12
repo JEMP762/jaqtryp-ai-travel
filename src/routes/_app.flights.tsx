@@ -81,12 +81,13 @@ function FlightsPage() {
   const search = useServerFn(searchFlights);
   const createOrder = useServerFn(createFlightOrder);
   const listOrders = useServerFn(listFlightOrders);
+  const sp = Route.useSearch();
 
   const [form, setForm] = useState(() => ({
-    origin: "GRU",
-    destination: "JFK",
-    departure_date: tomorrowISO(),
-    return_date: "",
+    origin: sp.origin || "GRU",
+    destination: sp.destination || "JFK",
+    departure_date: sp.departure_date || tomorrowISO(),
+    return_date: sp.return_date || "",
     adults: 1,
     cabin_class: "economy" as "economy" | "premium_economy" | "business" | "first",
   }));
