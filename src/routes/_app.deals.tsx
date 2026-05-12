@@ -473,6 +473,21 @@ function DealCard({
   onToggle: () => void;
 }) {
   const Icon = deal.type === "flight" ? Plane : BedDouble;
+  const navigate = useNavigate();
+  const hasApi = deal.type === "flight" ? HAS_FLIGHT_API : HAS_STAY_API;
+  const externalUrl = externalBookingUrl(deal);
+
+  const onBook = () => {
+    if (hasApi) {
+      navigate({ to: deal.type === "flight" ? "/flights" : "/stays" });
+      toast("Abrindo reserva", {
+        description: `Buscando ${deal.type === "flight" ? "voo" : "hotel"} para ${deal.destination}…`,
+      });
+    } else {
+      window.open(externalUrl, "_blank", "noopener,noreferrer");
+    }
+  };
+
   return (
     <article className="group relative overflow-hidden rounded-xl border border-border bg-card/60 p-4 transition-all hover:border-primary/40 hover:shadow-elegant">
       {deal.hot && (
@@ -522,26 +537,57 @@ function DealCard({
         </Badge>
       </div>
 
-      <div className="mt-4 flex items-center justify-between gap-2 border-t border-border pt-3">
-        <span className="text-[11px] text-muted-foreground">
-          ⏳ expira em {deal.expiresInH}h
-        </span>
+      <div className="mt-4 space-y-2 border-t border-border pt-3">
         <Button
           size="sm"
-          variant={subscribed ? "default" : "outline"}
-          className="h-8 gap-1 text-xs"
-          onClick={onToggle}
+          className="h-9 w-full gap-1 text-xs font-semibold"
+          onClick={onBook}
         >
-          {subscribed ? (
+          {hasApi ? (
             <>
-              <BellRing className="h-3 w-3" /> Avisando
+              <ShoppingBag className="h-3.5 w-3.5" />
+              Reservar agora • {fmt(deal.price, deal.currency)}
             </>
           ) : (
             <>
-              <Bell className="h-3 w-3" /> Avise-me
+              <ExternalLink className="h-3.5 w-3.5" />
+              Reservar no site oficial
             </>
           )}
         </Button>
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[11px] text-muted-foreground">
+            ⏳ expira em {deal.expiresInH}h
+          </span>
+          <div className="flex items-center gap-2">
+            {hasApi && (
+              <a
+                href={externalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+              >
+                Comparar preço ↗
+              </a>
+            )}
+            <Button
+              size="sm"
+              variant={subscribed ? "default" : "outline"}
+              className="h-7 gap-1 text-[11px]"
+              onClick={onToggle}
+            >
+              {subscribed ? (
+                <>
+                  <BellRing className="h-3 w-3" /> Avisando
+                </>
+              ) : (
+                <>
+                  <Bell className="h-3 w-3" /> Avise-me
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
       </div>
     </article>
   );
