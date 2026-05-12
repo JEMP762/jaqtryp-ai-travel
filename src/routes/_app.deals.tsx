@@ -521,8 +521,6 @@ function DealCard({
       toast("Abrindo reserva", {
         description: `Buscando ${deal.type === "flight" ? "voo" : "hotel"} para ${deal.destination} em ${depart}…`,
       });
-    } else {
-      window.open(externalUrl, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -576,38 +574,38 @@ function DealCard({
       </div>
 
       <div className="mt-4 space-y-2 border-t border-border pt-3">
-        <Button
-          size="sm"
-          className="h-9 w-full gap-1 text-xs font-semibold"
-          onClick={onBook}
-        >
-          {hasApi ? (
+        {hasApi ? (
+          <Button
+            size="sm"
+            className="h-9 w-full gap-1 text-xs font-semibold"
+            onClick={onBook}
+          >
             <>
               <ShoppingBag className="h-3.5 w-3.5" />
               Reservar agora • {fmt(deal.price, deal.currency)}
             </>
-          ) : (
-            <>
+          </Button>
+        ) : (
+          <Button asChild size="sm" className="h-9 w-full gap-1 text-xs font-semibold">
+            <a href={externalUrl} target="_blank" rel="noopener noreferrer">
               <ExternalLink className="h-3.5 w-3.5" />
               Reservar no site oficial
-            </>
-          )}
-        </Button>
+            </a>
+          </Button>
+        )}
         <div className="flex items-center justify-between gap-2">
           <span className="text-[11px] text-muted-foreground">
             ⏳ expira em {deal.expiresInH}h
           </span>
           <div className="flex items-center gap-2">
-            {hasApi && (
-              <a
-                href={externalUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-              >
-                Comparar preço ↗
-              </a>
-            )}
+            <a
+              href={externalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            >
+              Comparar preço ↗
+            </a>
             <Button
               size="sm"
               variant={subscribed ? "default" : "outline"}
