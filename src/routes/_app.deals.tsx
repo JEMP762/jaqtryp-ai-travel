@@ -21,7 +21,7 @@ import { cn } from "@/lib/utils";
 
 // Duffel API is configured (DUFFEL_API_KEY) — flights & stays use internal booking
 const HAS_FLIGHT_API = true;
-const HAS_STAY_API = true;
+const HAS_STAY_API = false; // Duffel Stays not enabled on this account → external fallback
 
 // Stable future dates derived from the deal id so the search prefill is realistic
 function dealDates(deal: Deal) {
