@@ -1,13 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Plane, Search, Loader2, ArrowRight, Clock, Ticket, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
 import { searchFlights, createFlightOrder, listFlightOrders } from "@/lib/duffel.functions";
 import { useAuth } from "@/hooks/useAuth";
 
+const flightsSearchSchema = z.object({
+  origin: fallback(z.string(), "").default(""),
+  destination: fallback(z.string(), "").default(""),
+  departure_date: fallback(z.string(), "").default(""),
+  return_date: fallback(z.string(), "").default(""),
+  auto: fallback(z.boolean(), false).default(false),
+});
+
 export const Route = createFileRoute("/_app/flights")({
+  validateSearch: zodValidator(flightsSearchSchema),
   component: FlightsPage,
 });
 
@@ -70,12 +81,13 @@ function FlightsPage() {
   const search = useServerFn(searchFlights);
   const createOrder = useServerFn(createFlightOrder);
   const listOrders = useServerFn(listFlightOrders);
+  const sp = Route.useSearch();
 
   const [form, setForm] = useState(() => ({
-    origin: "GRU",
-    destination: "JFK",
-    departure_date: tomorrowISO(),
-    return_date: "",
+    origin: sp.origin || "GRU",
+    destination: sp.destination || "JFK",
+    departure_date: sp.departure_date || tomorrowISO(),
+    return_date: sp.return_date || "",
     adults: 1,
     cabin_class: "economy" as "economy" | "premium_economy" | "business" | "first",
   }));
@@ -144,6 +156,16 @@ function FlightsPage() {
     },
     onError: (e: any) => toast.error(e.message || "Falha ao reservar"),
   });
+
+  // Auto-trigger search when arriving from a deal (?auto=true)
+  const autoRan = useRef(false);
+  useEffect(() => {
+    if (sp.auto && !autoRan.current && form.origin && form.destination && form.departure_date) {
+      autoRan.current = true;
+      searchMut.mutate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sp.auto]);
 
 
   function selectOffer(o: Offer) {

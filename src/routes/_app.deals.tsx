@@ -23,16 +23,31 @@ import { cn } from "@/lib/utils";
 const HAS_FLIGHT_API = true;
 const HAS_STAY_API = true;
 
+// Stable future dates derived from the deal id so the search prefill is realistic
+function dealDates(deal: Deal) {
+  const seed = [...deal.id].reduce((s, c) => s + c.charCodeAt(0), 0);
+  const offsetDays = 21 + (seed % 60); // depart 21–80 days ahead
+  const tripLen = deal.nights ?? 7;
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+  start.setDate(start.getDate() + offsetDays);
+  const end = new Date(start);
+  end.setDate(end.getDate() + tripLen);
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  return { depart: iso(start), ret: iso(end) };
+}
+
 function externalBookingUrl(deal: Deal): string {
+  const { depart, ret } = dealDates(deal);
   if (deal.type === "flight") {
-    const o = deal.origin || "";
-    const d = deal.destination || "";
-    return `https://www.google.com/travel/flights?q=${encodeURIComponent(
-      `voos ${o} para ${d}`,
-    )}`;
+    const o = (deal.origin || "").toLowerCase();
+    const d = (deal.destination || "").toLowerCase();
+    // Skyscanner deep-link (YYMMDD) — no Google interstitial
+    const ymd = (iso: string) => iso.slice(2).replace(/-/g, "");
+    return `https://www.skyscanner.com.br/transport/flights/${o}/${d}/${ymd(depart)}/${ymd(ret)}/`;
   }
   const q = `${deal.hotel || ""} ${deal.destination} ${deal.country}`.trim();
-  return `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(q)}`;
+  return `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(q)}&checkin=${depart}&checkout=${ret}`;
 }
 
 export const Route = createFileRoute("/_app/deals")({
@@ -479,9 +494,32 @@ function DealCard({
 
   const onBook = () => {
     if (hasApi) {
-      navigate({ to: deal.type === "flight" ? "/flights" : "/stays" });
+      const { depart, ret } = dealDates(deal);
+      if (deal.type === "flight") {
+        navigate({
+          to: "/flights",
+          search: {
+            origin: deal.origin || "",
+            destination: deal.destination || "",
+            departure_date: depart,
+            return_date: ret,
+            auto: true,
+          },
+        });
+      } else {
+        navigate({
+          to: "/stays",
+          search: {
+            query: deal.destination,
+            check_in_date: depart,
+            check_out_date: ret,
+            guests: 2,
+            auto: true,
+          },
+        });
+      }
       toast("Abrindo reserva", {
-        description: `Buscando ${deal.type === "flight" ? "voo" : "hotel"} para ${deal.destination}…`,
+        description: `Buscando ${deal.type === "flight" ? "voo" : "hotel"} para ${deal.destination} em ${depart}…`,
       });
     } else {
       window.open(externalUrl, "_blank", "noopener,noreferrer");
