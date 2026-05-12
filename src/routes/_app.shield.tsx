@@ -119,17 +119,126 @@ const COMMON_SCAMS = [
   },
 ];
 
-// Mock map markers (Paris area as default)
-const MAP_RISKS = [
-  { lat: 48.8566, lng: 2.3522, level: "high" as RiskLevel, label: "Pickpockets" },
-  { lat: 48.8606, lng: 2.3376, level: "medium" as RiskLevel, label: "Golpe táxi" },
-  { lat: 48.8584, lng: 2.2945, level: "high" as RiskLevel, label: "Furtos" },
-  { lat: 48.853, lng: 2.3499, level: "low" as RiskLevel, label: "Polícia turística" },
-  { lat: 48.8738, lng: 2.295, level: "medium" as RiskLevel, label: "Preços abusivos" },
-  { lat: 48.8462, lng: 2.3464, level: "low" as RiskLevel, label: "Zona segura" },
-];
+// Risk markers are generated dynamically around the user's position.
+type RiskPoint = { lat: number; lng: number; level: RiskLevel; label: string };
 
-const USER_POS: [number, number] = [48.8566, 2.3522];
+function generateRisksAround([lat, lng]: [number, number]): RiskPoint[] {
+  // Deterministic-ish offsets in degrees (~100-500m at mid latitudes)
+  const offsets: { dx: number; dy: number; level: RiskLevel; label: string }[] = [
+    { dx: 0.004, dy: 0.002, level: "high", label: "Furtos relatados" },
+    { dx: -0.003, dy: 0.005, level: "medium", label: "Golpe de táxi" },
+    { dx: 0.006, dy: -0.004, level: "high", label: "Pickpockets" },
+    { dx: -0.005, dy: -0.002, level: "low", label: "Polícia turística" },
+    { dx: 0.002, dy: 0.007, level: "medium", label: "Preços abusivos" },
+    { dx: -0.007, dy: 0.001, level: "low", label: "Zona segura" },
+  ];
+  return offsets.map((o) => ({
+    lat: lat + o.dy,
+    lng: lng + o.dx,
+    level: o.level,
+    label: o.label,
+  }));
+}
+
+const FALLBACK_POS: [number, number] = [48.8566, 2.3522];
+
+// --- Live location hook ----------------------------------------------------
+
+type LocStatus = "idle" | "asking" | "granted" | "denied" | "unsupported";
+
+type LiveLocation = {
+  status: LocStatus;
+  pos: [number, number] | null;
+  city: string | null;
+  country: string | null;
+  countryCode: string | null;
+  weather: { temp: number; code: number } | null;
+  request: () => void;
+};
+
+const WEATHER_EMOJI: Record<number, string> = {
+  0: "☀️",
+  1: "🌤",
+  2: "⛅",
+  3: "☁️",
+  45: "🌫",
+  48: "🌫",
+  51: "🌦",
+  61: "🌧",
+  63: "🌧",
+  65: "🌧",
+  71: "🌨",
+  73: "🌨",
+  75: "❄️",
+  80: "🌦",
+  95: "⛈",
+};
+
+function useLiveLocation(): LiveLocation {
+  const [status, setStatus] = React.useState<LocStatus>("idle");
+  const [pos, setPos] = React.useState<[number, number] | null>(null);
+  const [city, setCity] = React.useState<string | null>(null);
+  const [country, setCountry] = React.useState<string | null>(null);
+  const [countryCode, setCountryCode] = React.useState<string | null>(null);
+  const [weather, setWeather] = React.useState<{ temp: number; code: number } | null>(null);
+
+  const request = React.useCallback(() => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setStatus("unsupported");
+      return;
+    }
+    setStatus("asking");
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        setStatus("granted");
+        setPos([p.coords.latitude, p.coords.longitude]);
+      },
+      () => setStatus("denied"),
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
+    );
+  }, []);
+
+  // Auto-ask once on mount
+  React.useEffect(() => {
+    request();
+  }, [request]);
+
+  // Reverse geocode + weather when pos changes
+  React.useEffect(() => {
+    if (!pos) return;
+    const [lat, lng] = pos;
+    const ctrl = new AbortController();
+    (async () => {
+      try {
+        const r = await fetch(
+          `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=pt`,
+          { signal: ctrl.signal },
+        );
+        const j = await r.json();
+        setCity(j.city || j.locality || j.principalSubdivision || null);
+        setCountry(j.countryName || null);
+        setCountryCode(j.countryCode || null);
+      } catch {
+        /* ignore */
+      }
+      try {
+        const r = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code`,
+          { signal: ctrl.signal },
+        );
+        const j = await r.json();
+        if (j?.current) {
+          setWeather({ temp: Math.round(j.current.temperature_2m), code: j.current.weather_code });
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => ctrl.abort();
+  }, [pos]);
+
+  return { status, pos, city, country, countryCode, weather, request };
+}
 
 // --- Helpers ---------------------------------------------------------------
 
@@ -187,14 +296,34 @@ function GlassCard({
 
 function ShieldHeader({
   protectionActive,
+  loc,
 }: {
   protectionActive: boolean;
+  loc: LiveLocation;
 }) {
   const [now, setNow] = React.useState(() => new Date());
   React.useEffect(() => {
     const i = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(i);
   }, []);
+
+  const cityLabel =
+    loc.status === "asking"
+      ? "Localizando…"
+      : loc.status === "denied"
+        ? "Permissão negada"
+        : loc.status === "unsupported"
+          ? "Indisponível"
+          : loc.city
+            ? `${loc.city}${loc.countryCode ? ", " + loc.countryCode : ""}`
+            : "—";
+
+  const weatherLabel = loc.weather
+    ? `${loc.weather.temp}° ${WEATHER_EMOJI[loc.weather.code] ?? ""}`
+    : loc.status === "granted"
+      ? "…"
+      : "—";
+
   return (
     <GlassCard className="!p-6 md:!p-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -206,12 +335,24 @@ function ShieldHeader({
             Você está <span className="text-gradient">protegido</span>
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Monitoramento contínuo da sua viagem em tempo real.
+            {loc.status === "denied" || loc.status === "unsupported" ? (
+              <>
+                Ative a localização para alertas em tempo real.{" "}
+                <button
+                  onClick={loc.request}
+                  className="text-primary underline-offset-2 hover:underline"
+                >
+                  Tentar novamente
+                </button>
+              </>
+            ) : (
+              "Monitoramento contínuo da sua viagem em tempo real."
+            )}
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <InfoChip icon={MapPin} label="Cidade" value="Paris, FR" />
-          <InfoChip icon={Cloud} label="Clima" value="18° ☁" />
+          <InfoChip icon={MapPin} label="Cidade" value={cityLabel} />
+          <InfoChip icon={Cloud} label="Clima" value={weatherLabel} />
           <InfoChip
             icon={Clock}
             label="Hora local"
@@ -326,26 +467,47 @@ function ScoreCard({ score }: { score: number }) {
   );
 }
 
-function RiskMap() {
+function RiskMap({ center, live }: { center: [number, number]; live: boolean }) {
   const ref = React.useRef<HTMLDivElement>(null);
+  const mapRef = React.useRef<import("leaflet").Map | null>(null);
+  const layerRef = React.useRef<import("leaflet").LayerGroup | null>(null);
+
   React.useEffect(() => {
     let cancelled = false;
-    let map: import("leaflet").Map | null = null;
     (async () => {
       const L = (await import("leaflet")).default;
       await import("leaflet/dist/leaflet.css");
-      if (cancelled || !ref.current) return;
-      map = L.map(ref.current, {
-        center: USER_POS,
-        zoom: 13,
+      if (cancelled || !ref.current || mapRef.current) return;
+      const map = L.map(ref.current, {
+        center,
+        zoom: 14,
         zoomControl: false,
         attributionControl: false,
       });
+      mapRef.current = map;
       L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
         maxZoom: 19,
       }).addTo(map);
+      layerRef.current = L.layerGroup().addTo(map);
+    })();
+    return () => {
+      cancelled = true;
+      mapRef.current?.remove();
+      mapRef.current = null;
+    };
+  }, []);
 
-      // user marker
+  // Re-render markers when center changes
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const L = (await import("leaflet")).default;
+      const map = mapRef.current;
+      const layer = layerRef.current;
+      if (!map || !layer || cancelled) return;
+      map.setView(center, 14);
+      layer.clearLayers();
+
       const userIcon = L.divIcon({
         className: "",
         html: `<div style="position:relative;width:28px;height:28px">
@@ -355,16 +517,11 @@ function RiskMap() {
         iconSize: [28, 28],
         iconAnchor: [14, 14],
       });
-      L.marker(USER_POS, { icon: userIcon }).addTo(map);
+      L.marker(center, { icon: userIcon }).bindTooltip(live ? "Você está aqui" : "Posição padrão", { direction: "top" }).addTo(layer);
 
-      // risk zones (heatmap-style circles)
-      MAP_RISKS.forEach((r) => {
+      generateRisksAround(center).forEach((r) => {
         const color =
-          r.level === "high"
-            ? "#ef4444"
-            : r.level === "medium"
-              ? "#facc15"
-              : "#10b981";
+          r.level === "high" ? "#ef4444" : r.level === "medium" ? "#facc15" : "#10b981";
         L.circle([r.lat, r.lng], {
           radius: r.level === "high" ? 350 : r.level === "medium" ? 250 : 200,
           color,
@@ -372,15 +529,14 @@ function RiskMap() {
           fillColor: color,
           fillOpacity: 0.25,
         })
-          .addTo(map!)
+          .addTo(layer)
           .bindTooltip(r.label, { direction: "top" });
       });
     })();
     return () => {
       cancelled = true;
-      map?.remove();
     };
-  }, []);
+  }, [center, live]);
 
   return (
     <GlassCard className="!p-0">
@@ -690,17 +846,19 @@ function Widgets() {
 function ShieldDashboard() {
   const [protectionActive, setProtectionActive] = React.useState(true);
   const [scannerOpen, setScannerOpen] = React.useState(false);
+  const loc = useLiveLocation();
+  const center: [number, number] = loc.pos ?? FALLBACK_POS;
 
   return (
     <div className="relative mx-auto max-w-7xl space-y-6 px-4 py-8 md:px-10">
       <style>{`@keyframes jaq-ping { 75%, 100% { transform: scale(2.2); opacity: 0; } }`}</style>
 
-      <ShieldHeader protectionActive={protectionActive} />
+      <ShieldHeader protectionActive={protectionActive} loc={loc} />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <ScoreCard score={82} />
-          <RiskMap />
+          <RiskMap center={center} live={loc.status === "granted"} />
           <PriceWatch />
         </div>
         <div className="space-y-6">
