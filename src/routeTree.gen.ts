@@ -20,6 +20,7 @@ import { Route as AppStaysRouteImport } from './routes/_app.stays'
 import { Route as AppShieldRouteImport } from './routes/_app.shield'
 import { Route as AppPlannerRouteImport } from './routes/_app.planner'
 import { Route as AppFlightsRouteImport } from './routes/_app.flights'
+import { Route as AppDealsRouteImport } from './routes/_app.deals'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppChatRouteImport } from './routes/_app.chat'
 
@@ -77,6 +78,11 @@ const AppFlightsRoute = AppFlightsRouteImport.update({
   path: '/flights',
   getParentRoute: () => AppRoute,
 } as any)
+const AppDealsRoute = AppDealsRouteImport.update({
+  id: '/deals',
+  path: '/deals',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppDashboardRoute = AppDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/signup': typeof SignupRoute
   '/chat': typeof AppChatRoute
   '/dashboard': typeof AppDashboardRoute
+  '/deals': typeof AppDealsRoute
   '/flights': typeof AppFlightsRoute
   '/planner': typeof AppPlannerRoute
   '/shield': typeof AppShieldRoute
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
   '/signup': typeof SignupRoute
   '/chat': typeof AppChatRoute
   '/dashboard': typeof AppDashboardRoute
+  '/deals': typeof AppDealsRoute
   '/flights': typeof AppFlightsRoute
   '/planner': typeof AppPlannerRoute
   '/shield': typeof AppShieldRoute
@@ -124,6 +132,7 @@ export interface FileRoutesById {
   '/signup': typeof SignupRoute
   '/_app/chat': typeof AppChatRoute
   '/_app/dashboard': typeof AppDashboardRoute
+  '/_app/deals': typeof AppDealsRoute
   '/_app/flights': typeof AppFlightsRoute
   '/_app/planner': typeof AppPlannerRoute
   '/_app/shield': typeof AppShieldRoute
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/chat'
     | '/dashboard'
+    | '/deals'
     | '/flights'
     | '/planner'
     | '/shield'
@@ -154,6 +164,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/chat'
     | '/dashboard'
+    | '/deals'
     | '/flights'
     | '/planner'
     | '/shield'
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/_app/chat'
     | '/_app/dashboard'
+    | '/_app/deals'
     | '/_app/flights'
     | '/_app/planner'
     | '/_app/shield'
@@ -266,6 +278,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppFlightsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/deals': {
+      id: '/_app/deals'
+      path: '/deals'
+      fullPath: '/deals'
+      preLoaderRoute: typeof AppDealsRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/dashboard': {
       id: '/_app/dashboard'
       path: '/dashboard'
@@ -286,6 +305,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppChatRoute: typeof AppChatRoute
   AppDashboardRoute: typeof AppDashboardRoute
+  AppDealsRoute: typeof AppDealsRoute
   AppFlightsRoute: typeof AppFlightsRoute
   AppPlannerRoute: typeof AppPlannerRoute
   AppShieldRoute: typeof AppShieldRoute
@@ -296,6 +316,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppChatRoute: AppChatRoute,
   AppDashboardRoute: AppDashboardRoute,
+  AppDealsRoute: AppDealsRoute,
   AppFlightsRoute: AppFlightsRoute,
   AppPlannerRoute: AppPlannerRoute,
   AppShieldRoute: AppShieldRoute,
@@ -316,3 +337,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
