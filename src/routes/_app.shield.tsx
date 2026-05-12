@@ -119,17 +119,126 @@ const COMMON_SCAMS = [
   },
 ];
 
-// Mock map markers (Paris area as default)
-const MAP_RISKS = [
-  { lat: 48.8566, lng: 2.3522, level: "high" as RiskLevel, label: "Pickpockets" },
-  { lat: 48.8606, lng: 2.3376, level: "medium" as RiskLevel, label: "Golpe táxi" },
-  { lat: 48.8584, lng: 2.2945, level: "high" as RiskLevel, label: "Furtos" },
-  { lat: 48.853, lng: 2.3499, level: "low" as RiskLevel, label: "Polícia turística" },
-  { lat: 48.8738, lng: 2.295, level: "medium" as RiskLevel, label: "Preços abusivos" },
-  { lat: 48.8462, lng: 2.3464, level: "low" as RiskLevel, label: "Zona segura" },
-];
+// Risk markers are generated dynamically around the user's position.
+type RiskPoint = { lat: number; lng: number; level: RiskLevel; label: string };
 
-const USER_POS: [number, number] = [48.8566, 2.3522];
+function generateRisksAround([lat, lng]: [number, number]): RiskPoint[] {
+  // Deterministic-ish offsets in degrees (~100-500m at mid latitudes)
+  const offsets: { dx: number; dy: number; level: RiskLevel; label: string }[] = [
+    { dx: 0.004, dy: 0.002, level: "high", label: "Furtos relatados" },
+    { dx: -0.003, dy: 0.005, level: "medium", label: "Golpe de táxi" },
+    { dx: 0.006, dy: -0.004, level: "high", label: "Pickpockets" },
+    { dx: -0.005, dy: -0.002, level: "low", label: "Polícia turística" },
+    { dx: 0.002, dy: 0.007, level: "medium", label: "Preços abusivos" },
+    { dx: -0.007, dy: 0.001, level: "low", label: "Zona segura" },
+  ];
+  return offsets.map((o) => ({
+    lat: lat + o.dy,
+    lng: lng + o.dx,
+    level: o.level,
+    label: o.label,
+  }));
+}
+
+const FALLBACK_POS: [number, number] = [48.8566, 2.3522];
+
+// --- Live location hook ----------------------------------------------------
+
+type LocStatus = "idle" | "asking" | "granted" | "denied" | "unsupported";
+
+type LiveLocation = {
+  status: LocStatus;
+  pos: [number, number] | null;
+  city: string | null;
+  country: string | null;
+  countryCode: string | null;
+  weather: { temp: number; code: number } | null;
+  request: () => void;
+};
+
+const WEATHER_EMOJI: Record<number, string> = {
+  0: "☀️",
+  1: "🌤",
+  2: "⛅",
+  3: "☁️",
+  45: "🌫",
+  48: "🌫",
+  51: "🌦",
+  61: "🌧",
+  63: "🌧",
+  65: "🌧",
+  71: "🌨",
+  73: "🌨",
+  75: "❄️",
+  80: "🌦",
+  95: "⛈",
+};
+
+function useLiveLocation(): LiveLocation {
+  const [status, setStatus] = React.useState<LocStatus>("idle");
+  const [pos, setPos] = React.useState<[number, number] | null>(null);
+  const [city, setCity] = React.useState<string | null>(null);
+  const [country, setCountry] = React.useState<string | null>(null);
+  const [countryCode, setCountryCode] = React.useState<string | null>(null);
+  const [weather, setWeather] = React.useState<{ temp: number; code: number } | null>(null);
+
+  const request = React.useCallback(() => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setStatus("unsupported");
+      return;
+    }
+    setStatus("asking");
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        setStatus("granted");
+        setPos([p.coords.latitude, p.coords.longitude]);
+      },
+      () => setStatus("denied"),
+      { enableHighAccuracy: true, timeout: 10_000, maximumAge: 60_000 },
+    );
+  }, []);
+
+  // Auto-ask once on mount
+  React.useEffect(() => {
+    request();
+  }, [request]);
+
+  // Reverse geocode + weather when pos changes
+  React.useEffect(() => {
+    if (!pos) return;
+    const [lat, lng] = pos;
+    const ctrl = new AbortController();
+    (async () => {
+      try {
+        const r = await fetch(
+          `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lng}&localityLanguage=pt`,
+          { signal: ctrl.signal },
+        );
+        const j = await r.json();
+        setCity(j.city || j.locality || j.principalSubdivision || null);
+        setCountry(j.countryName || null);
+        setCountryCode(j.countryCode || null);
+      } catch {
+        /* ignore */
+      }
+      try {
+        const r = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code`,
+          { signal: ctrl.signal },
+        );
+        const j = await r.json();
+        if (j?.current) {
+          setWeather({ temp: Math.round(j.current.temperature_2m), code: j.current.weather_code });
+        }
+      } catch {
+        /* ignore */
+      }
+    })();
+    return () => ctrl.abort();
+  }, [pos]);
+
+  return { status, pos, city, country, countryCode, weather, request };
+}
 
 // --- Helpers ---------------------------------------------------------------
 
