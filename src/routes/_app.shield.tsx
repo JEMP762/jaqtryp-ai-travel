@@ -875,14 +875,21 @@ function ProtectionToggle({
   );
 }
 
-function Widgets() {
+function Widgets({ loc }: { loc: LiveLocation }) {
+  const cur = localCurrency(loc.countryCode);
+  const cc = loc.countryCode || "—";
+  const sos = (loc.countryCode && EMERGENCY_BY_CC[loc.countryCode]) || "112";
+  const hello = (loc.countryCode && HELLO_BY_CC[loc.countryCode]) || "Hello";
+  const weatherText = loc.weather
+    ? `${loc.weather.temp}° ${WEATHER_EMOJI[loc.weather.code] ?? ""}`
+    : "—";
   const items = [
-    { icon: Cloud, label: "Clima", value: "18° · Nublado" },
-    { icon: DollarSign, label: "Câmbio EUR/BRL", value: "5,82" },
-    { icon: Languages, label: "Tradução rápida", value: "Olá → Bonjour" },
-    { icon: Share2, label: "Compartilhar local", value: "Família" },
+    { icon: Cloud, label: "Clima", value: weatherText },
+    { icon: DollarSign, label: `Câmbio ${cur.code}/BRL`, value: cur.brl.toLocaleString("pt-BR") },
+    { icon: Languages, label: "Tradução rápida", value: `Olá → ${hello}` },
+    { icon: Share2, label: "Compartilhar local", value: loc.city || "—" },
     { icon: Wifi, label: "Modo offline", value: "Disponível" },
-    { icon: Phone, label: "SOS internacional", value: "112 · FR" },
+    { icon: Phone, label: "SOS internacional", value: `${sos} · ${cc}` },
   ];
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
