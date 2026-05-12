@@ -494,9 +494,32 @@ function DealCard({
 
   const onBook = () => {
     if (hasApi) {
-      navigate({ to: deal.type === "flight" ? "/flights" : "/stays" });
+      const { depart, ret } = dealDates(deal);
+      if (deal.type === "flight") {
+        navigate({
+          to: "/flights",
+          search: {
+            origin: deal.origin || "",
+            destination: deal.destination || "",
+            departure_date: depart,
+            return_date: ret,
+            auto: true,
+          },
+        });
+      } else {
+        navigate({
+          to: "/stays",
+          search: {
+            query: deal.destination,
+            check_in_date: depart,
+            check_out_date: ret,
+            guests: 2,
+            auto: true,
+          },
+        });
+      }
       toast("Abrindo reserva", {
-        description: `Buscando ${deal.type === "flight" ? "voo" : "hotel"} para ${deal.destination}…`,
+        description: `Buscando ${deal.type === "flight" ? "voo" : "hotel"} para ${deal.destination} em ${depart}…`,
       });
     } else {
       window.open(externalUrl, "_blank", "noopener,noreferrer");
