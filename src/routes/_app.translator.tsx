@@ -219,7 +219,18 @@ function TranslatorPage() {
       setSrc((finalText + interim).trim());
     };
     rec.onerror = (e: any) => {
-      toast.error("Erro no microfone: " + (e.error || "desconhecido"));
+      const code = e?.error || "desconhecido";
+      const msg =
+        code === "not-allowed" || code === "service-not-allowed"
+          ? "Microfone bloqueado pelo navegador. Permita o acesso e tente novamente."
+          : code === "no-speech"
+            ? "Nenhuma fala detectada. Tente novamente."
+            : code === "audio-capture"
+              ? "Microfone indisponível. Verifique seu dispositivo."
+              : code === "network"
+                ? "Sem conexão para reconhecimento de voz."
+                : "Erro no microfone: " + code;
+      toast.error(msg);
       setListening(false);
     };
     rec.onend = async () => {
