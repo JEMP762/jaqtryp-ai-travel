@@ -44,47 +44,52 @@ export const Route = createFileRoute("/_app/shield")({
 
 type RiskLevel = "low" | "medium" | "high";
 
-const ALERTS: {
+type AlertItem = {
   id: string;
   title: string;
   level: RiskLevel;
   time: string;
   distance: string;
   desc: string;
-}[] = [
-  {
-    id: "1",
-    title: "Golpe de táxi relatado próximo",
-    level: "high",
-    time: "há 4 min",
-    distance: "180 m",
-    desc: "Motorista cobrando 3x o valor da corrida na região da estação central.",
-  },
-  {
-    id: "2",
-    title: "Área com muitos furtos",
-    level: "high",
-    time: "há 12 min",
-    distance: "420 m",
-    desc: "Concentração de batedores de carteira em rua turística movimentada.",
-  },
-  {
-    id: "3",
-    title: "Preço acima da média detectado",
-    level: "medium",
-    time: "há 22 min",
-    distance: "60 m",
-    desc: "Restaurante cobrando 38% acima do preço médio turístico local.",
-  },
-  {
-    id: "4",
-    title: "Cambistas ilegais relatados",
-    level: "medium",
-    time: "há 1 h",
-    distance: "1.2 km",
-    desc: "Casa de câmbio sem registro oficial oferecendo taxas suspeitas.",
-  },
-];
+};
+
+function generateAlerts(city: string | null): AlertItem[] {
+  const where = city || "região atual";
+  return [
+    {
+      id: "1",
+      title: `Golpe de táxi relatado em ${where}`,
+      level: "high",
+      time: "há 4 min",
+      distance: "180 m",
+      desc: `Motorista cobrando 3x o valor da corrida em ${where}.`,
+    },
+    {
+      id: "2",
+      title: `Furtos frequentes em ${where}`,
+      level: "high",
+      time: "há 12 min",
+      distance: "420 m",
+      desc: `Concentração de batedores de carteira em rua turística de ${where}.`,
+    },
+    {
+      id: "3",
+      title: "Preço acima da média detectado",
+      level: "medium",
+      time: "há 22 min",
+      distance: "60 m",
+      desc: `Restaurante em ${where} cobrando 38% acima do preço médio local.`,
+    },
+    {
+      id: "4",
+      title: "Cambistas ilegais relatados",
+      level: "medium",
+      time: "há 1 h",
+      distance: "1.2 km",
+      desc: `Casa de câmbio sem registro oficial em ${where} oferecendo taxas suspeitas.`,
+    },
+  ];
+}
 
 const COMMON_SCAMS = [
   {
@@ -118,6 +123,46 @@ const COMMON_SCAMS = [
     emoji: "🏧",
   },
 ];
+
+// Country code → local currency
+const CURRENCY_BY_CC: Record<string, { code: string; symbol: string; brl: number }> = {
+  BR: { code: "BRL", symbol: "R$", brl: 1 },
+  US: { code: "USD", symbol: "$", brl: 5.05 },
+  GB: { code: "GBP", symbol: "£", brl: 6.4 },
+  FR: { code: "EUR", symbol: "€", brl: 5.82 },
+  DE: { code: "EUR", symbol: "€", brl: 5.82 },
+  ES: { code: "EUR", symbol: "€", brl: 5.82 },
+  IT: { code: "EUR", symbol: "€", brl: 5.82 },
+  PT: { code: "EUR", symbol: "€", brl: 5.82 },
+  NL: { code: "EUR", symbol: "€", brl: 5.82 },
+  JP: { code: "JPY", symbol: "¥", brl: 0.033 },
+  CN: { code: "CNY", symbol: "¥", brl: 0.7 },
+  AR: { code: "ARS", symbol: "$", brl: 0.005 },
+  MX: { code: "MXN", symbol: "$", brl: 0.29 },
+  CA: { code: "CAD", symbol: "C$", brl: 3.7 },
+  AU: { code: "AUD", symbol: "A$", brl: 3.3 },
+  CH: { code: "CHF", symbol: "CHF", brl: 5.7 },
+  TH: { code: "THB", symbol: "฿", brl: 0.14 },
+  AE: { code: "AED", symbol: "AED", brl: 1.37 },
+};
+
+// Country code → emergency number
+const EMERGENCY_BY_CC: Record<string, string> = {
+  BR: "190", US: "911", GB: "999", FR: "112", DE: "112", ES: "112",
+  IT: "112", PT: "112", NL: "112", JP: "110", CN: "110", AR: "911",
+  MX: "911", CA: "911", AU: "000", CH: "112", TH: "191", AE: "999",
+};
+
+function localCurrency(cc: string | null) {
+  return (cc && CURRENCY_BY_CC[cc]) || { code: "USD", symbol: "$", brl: 5.05 };
+}
+
+// Translation hello hint by country code
+const HELLO_BY_CC: Record<string, string> = {
+  FR: "Bonjour", DE: "Hallo", ES: "Hola", IT: "Ciao", PT: "Olá",
+  JP: "こんにちは", CN: "你好", NL: "Hallo", US: "Hello", GB: "Hello",
+  TH: "สวัสดี", AE: "مرحبا", BR: "Olá",
+};
 
 // Risk markers are generated dynamically around the user's position.
 type RiskPoint = { lat: number; lng: number; level: RiskLevel; label: string };
@@ -568,20 +613,23 @@ function Legend({ color, label }: { color: string; label: string }) {
   );
 }
 
-function AlertsFeed() {
+function AlertsFeed({ city }: { city: string | null }) {
+  const alerts = React.useMemo(() => generateAlerts(city), [city]);
   return (
     <GlassCard>
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Activity className="h-4 w-4 text-primary" />
-          <div className="font-semibold">Alertas ao vivo</div>
+          <div className="font-semibold">
+            Alertas ao vivo{city ? ` · ${city}` : ""}
+          </div>
         </div>
         <Badge variant="outline" className="border-primary/30 text-primary">
-          {ALERTS.length} ativos
+          {alerts.length} ativos
         </Badge>
       </div>
       <div className="space-y-3">
-        {ALERTS.map((a) => {
+        {alerts.map((a) => {
           const s = levelStyles(a.level);
           return (
             <div
@@ -624,17 +672,27 @@ function AlertsFeed() {
   );
 }
 
-function PriceWatch() {
+function PriceWatch({
+  city,
+  countryCode,
+}: {
+  city: string | null;
+  countryCode: string | null;
+}) {
+  const cur = localCurrency(countryCode);
+  const where = city || "centro";
   const items = [
-    { name: "Le Petit Bistro", avg: 22, charged: 38, type: "Restaurante" },
-    { name: "Hotel Lumière", avg: 140, charged: 152, type: "Hotel" },
-    { name: "Tour Eiffel — café", avg: 4, charged: 9, type: "Café" },
+    { name: `Bistro ${where}`, avg: 22, charged: 38, type: "Restaurante" },
+    { name: `Hotel ${where} Central`, avg: 140, charged: 152, type: "Hotel" },
+    { name: `Café ${where}`, avg: 4, charged: 9, type: "Café" },
   ];
   return (
     <GlassCard>
       <div className="mb-4 flex items-center gap-2">
         <DollarSign className="h-4 w-4 text-primary" />
-        <div className="font-semibold">Painel de preços</div>
+        <div className="font-semibold">
+          Painel de preços{city ? ` · ${city}` : ""}
+        </div>
       </div>
       <div className="space-y-3">
         {items.map((it) => {
@@ -666,11 +724,12 @@ function PriceWatch() {
                 </div>
               </div>
               <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
-                Médio: €{it.avg} · Cobrado: <span className="text-foreground">€{it.charged}</span>
+                Médio: {cur.symbol}{it.avg} · Cobrado:{" "}
+                <span className="text-foreground">{cur.symbol}{it.charged}</span>
               </div>
               {bad && (
                 <p className="mt-2 text-xs text-red-300">
-                  ⚠ Possível golpe turístico — {diff}% acima da média da região.
+                  ⚠ Possível golpe turístico — {diff}% acima da média de {where}.
                 </p>
               )}
             </div>
@@ -681,12 +740,14 @@ function PriceWatch() {
   );
 }
 
-function ScamsCarousel() {
+function ScamsCarousel({ country }: { country: string | null }) {
   return (
     <GlassCard>
       <div className="mb-4 flex items-center gap-2">
         <ShieldCheck className="h-4 w-4 text-primary" />
-        <div className="font-semibold">Golpes comuns na França</div>
+        <div className="font-semibold">
+          Golpes comuns{country ? ` em ${country}` : ""}
+        </div>
       </div>
       <div className="-mx-2 flex snap-x snap-mandatory gap-3 overflow-x-auto px-2 pb-2">
         {COMMON_SCAMS.map((s) => (
@@ -814,14 +875,21 @@ function ProtectionToggle({
   );
 }
 
-function Widgets() {
+function Widgets({ loc }: { loc: LiveLocation }) {
+  const cur = localCurrency(loc.countryCode);
+  const cc = loc.countryCode || "—";
+  const sos = (loc.countryCode && EMERGENCY_BY_CC[loc.countryCode]) || "112";
+  const hello = (loc.countryCode && HELLO_BY_CC[loc.countryCode]) || "Hello";
+  const weatherText = loc.weather
+    ? `${loc.weather.temp}° ${WEATHER_EMOJI[loc.weather.code] ?? ""}`
+    : "—";
   const items = [
-    { icon: Cloud, label: "Clima", value: "18° · Nublado" },
-    { icon: DollarSign, label: "Câmbio EUR/BRL", value: "5,82" },
-    { icon: Languages, label: "Tradução rápida", value: "Olá → Bonjour" },
-    { icon: Share2, label: "Compartilhar local", value: "Família" },
+    { icon: Cloud, label: "Clima", value: weatherText },
+    { icon: DollarSign, label: `Câmbio ${cur.code}/BRL`, value: cur.brl.toLocaleString("pt-BR") },
+    { icon: Languages, label: "Tradução rápida", value: `Olá → ${hello}` },
+    { icon: Share2, label: "Compartilhar local", value: loc.city || "—" },
     { icon: Wifi, label: "Modo offline", value: "Disponível" },
-    { icon: Phone, label: "SOS internacional", value: "112 · FR" },
+    { icon: Phone, label: "SOS internacional", value: `${sos} · ${cc}` },
   ];
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
@@ -859,7 +927,7 @@ function ShieldDashboard() {
         <div className="space-y-6 lg:col-span-2">
           <ScoreCard score={82} />
           <RiskMap center={center} live={loc.status === "granted"} />
-          <PriceWatch />
+          <PriceWatch city={loc.city} countryCode={loc.countryCode} />
         </div>
         <div className="space-y-6">
           <ProtectionToggle
@@ -871,12 +939,12 @@ function ShieldDashboard() {
               );
             }}
           />
-          <AlertsFeed />
+          <AlertsFeed city={loc.city} />
         </div>
       </div>
 
-      <ScamsCarousel />
-      <Widgets />
+      <ScamsCarousel country={loc.country} />
+      <Widgets loc={loc} />
 
       <ScannerFab onClick={() => setScannerOpen(true)} />
       <ScannerSheet open={scannerOpen} onClose={() => setScannerOpen(false)} />
