@@ -1,13 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Plane, Search, Loader2, ArrowRight, Clock, Ticket, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { z } from "zod";
 import { searchFlights, createFlightOrder, listFlightOrders } from "@/lib/duffel.functions";
 import { useAuth } from "@/hooks/useAuth";
 
+const flightsSearchSchema = z.object({
+  origin: fallback(z.string(), "").default(""),
+  destination: fallback(z.string(), "").default(""),
+  departure_date: fallback(z.string(), "").default(""),
+  return_date: fallback(z.string(), "").default(""),
+  auto: fallback(z.boolean(), false).default(false),
+});
+
 export const Route = createFileRoute("/_app/flights")({
+  validateSearch: zodValidator(flightsSearchSchema),
   component: FlightsPage,
 });
 
