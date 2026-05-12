@@ -296,14 +296,34 @@ function GlassCard({
 
 function ShieldHeader({
   protectionActive,
+  loc,
 }: {
   protectionActive: boolean;
+  loc: LiveLocation;
 }) {
   const [now, setNow] = React.useState(() => new Date());
   React.useEffect(() => {
     const i = setInterval(() => setNow(new Date()), 30_000);
     return () => clearInterval(i);
   }, []);
+
+  const cityLabel =
+    loc.status === "asking"
+      ? "Localizando…"
+      : loc.status === "denied"
+        ? "Permissão negada"
+        : loc.status === "unsupported"
+          ? "Indisponível"
+          : loc.city
+            ? `${loc.city}${loc.countryCode ? ", " + loc.countryCode : ""}`
+            : "—";
+
+  const weatherLabel = loc.weather
+    ? `${loc.weather.temp}° ${WEATHER_EMOJI[loc.weather.code] ?? ""}`
+    : loc.status === "granted"
+      ? "…"
+      : "—";
+
   return (
     <GlassCard className="!p-6 md:!p-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -315,12 +335,24 @@ function ShieldHeader({
             Você está <span className="text-gradient">protegido</span>
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Monitoramento contínuo da sua viagem em tempo real.
+            {loc.status === "denied" || loc.status === "unsupported" ? (
+              <>
+                Ative a localização para alertas em tempo real.{" "}
+                <button
+                  onClick={loc.request}
+                  className="text-primary underline-offset-2 hover:underline"
+                >
+                  Tentar novamente
+                </button>
+              </>
+            ) : (
+              "Monitoramento contínuo da sua viagem em tempo real."
+            )}
           </p>
         </div>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <InfoChip icon={MapPin} label="Cidade" value="Paris, FR" />
-          <InfoChip icon={Cloud} label="Clima" value="18° ☁" />
+          <InfoChip icon={MapPin} label="Cidade" value={cityLabel} />
+          <InfoChip icon={Cloud} label="Clima" value={weatherLabel} />
           <InfoChip
             icon={Clock}
             label="Hora local"
