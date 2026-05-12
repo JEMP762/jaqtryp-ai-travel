@@ -46,12 +46,13 @@ function StaysPage() {
   const searchFn = useServerFn(searchStays);
   const ratesFn = useServerFn(getStayRates);
   const bookFn = useServerFn(createStayBooking);
+  const sp = Route.useSearch();
 
   const [form, setForm] = React.useState(() => ({
-    query: "Lisboa",
-    check_in_date: tomorrowISO(1),
-    check_out_date: tomorrowISO(4),
-    guests: 2,
+    query: sp.query || "Lisboa",
+    check_in_date: sp.check_in_date || tomorrowISO(1),
+    check_out_date: sp.check_out_date || tomorrowISO(4),
+    guests: sp.guests || 2,
     rooms: 1,
   }));
 
