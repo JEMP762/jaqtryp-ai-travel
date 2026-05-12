@@ -44,47 +44,52 @@ export const Route = createFileRoute("/_app/shield")({
 
 type RiskLevel = "low" | "medium" | "high";
 
-const ALERTS: {
+type AlertItem = {
   id: string;
   title: string;
   level: RiskLevel;
   time: string;
   distance: string;
   desc: string;
-}[] = [
-  {
-    id: "1",
-    title: "Golpe de táxi relatado próximo",
-    level: "high",
-    time: "há 4 min",
-    distance: "180 m",
-    desc: "Motorista cobrando 3x o valor da corrida na região da estação central.",
-  },
-  {
-    id: "2",
-    title: "Área com muitos furtos",
-    level: "high",
-    time: "há 12 min",
-    distance: "420 m",
-    desc: "Concentração de batedores de carteira em rua turística movimentada.",
-  },
-  {
-    id: "3",
-    title: "Preço acima da média detectado",
-    level: "medium",
-    time: "há 22 min",
-    distance: "60 m",
-    desc: "Restaurante cobrando 38% acima do preço médio turístico local.",
-  },
-  {
-    id: "4",
-    title: "Cambistas ilegais relatados",
-    level: "medium",
-    time: "há 1 h",
-    distance: "1.2 km",
-    desc: "Casa de câmbio sem registro oficial oferecendo taxas suspeitas.",
-  },
-];
+};
+
+function generateAlerts(city: string | null): AlertItem[] {
+  const where = city || "região atual";
+  return [
+    {
+      id: "1",
+      title: `Golpe de táxi relatado em ${where}`,
+      level: "high",
+      time: "há 4 min",
+      distance: "180 m",
+      desc: `Motorista cobrando 3x o valor da corrida em ${where}.`,
+    },
+    {
+      id: "2",
+      title: `Furtos frequentes em ${where}`,
+      level: "high",
+      time: "há 12 min",
+      distance: "420 m",
+      desc: `Concentração de batedores de carteira em rua turística de ${where}.`,
+    },
+    {
+      id: "3",
+      title: "Preço acima da média detectado",
+      level: "medium",
+      time: "há 22 min",
+      distance: "60 m",
+      desc: `Restaurante em ${where} cobrando 38% acima do preço médio local.`,
+    },
+    {
+      id: "4",
+      title: "Cambistas ilegais relatados",
+      level: "medium",
+      time: "há 1 h",
+      distance: "1.2 km",
+      desc: `Casa de câmbio sem registro oficial em ${where} oferecendo taxas suspeitas.`,
+    },
+  ];
+}
 
 const COMMON_SCAMS = [
   {
@@ -118,6 +123,46 @@ const COMMON_SCAMS = [
     emoji: "🏧",
   },
 ];
+
+// Country code → local currency
+const CURRENCY_BY_CC: Record<string, { code: string; symbol: string; brl: number }> = {
+  BR: { code: "BRL", symbol: "R$", brl: 1 },
+  US: { code: "USD", symbol: "$", brl: 5.05 },
+  GB: { code: "GBP", symbol: "£", brl: 6.4 },
+  FR: { code: "EUR", symbol: "€", brl: 5.82 },
+  DE: { code: "EUR", symbol: "€", brl: 5.82 },
+  ES: { code: "EUR", symbol: "€", brl: 5.82 },
+  IT: { code: "EUR", symbol: "€", brl: 5.82 },
+  PT: { code: "EUR", symbol: "€", brl: 5.82 },
+  NL: { code: "EUR", symbol: "€", brl: 5.82 },
+  JP: { code: "JPY", symbol: "¥", brl: 0.033 },
+  CN: { code: "CNY", symbol: "¥", brl: 0.7 },
+  AR: { code: "ARS", symbol: "$", brl: 0.005 },
+  MX: { code: "MXN", symbol: "$", brl: 0.29 },
+  CA: { code: "CAD", symbol: "C$", brl: 3.7 },
+  AU: { code: "AUD", symbol: "A$", brl: 3.3 },
+  CH: { code: "CHF", symbol: "CHF", brl: 5.7 },
+  TH: { code: "THB", symbol: "฿", brl: 0.14 },
+  AE: { code: "AED", symbol: "AED", brl: 1.37 },
+};
+
+// Country code → emergency number
+const EMERGENCY_BY_CC: Record<string, string> = {
+  BR: "190", US: "911", GB: "999", FR: "112", DE: "112", ES: "112",
+  IT: "112", PT: "112", NL: "112", JP: "110", CN: "110", AR: "911",
+  MX: "911", CA: "911", AU: "000", CH: "112", TH: "191", AE: "999",
+};
+
+function localCurrency(cc: string | null) {
+  return (cc && CURRENCY_BY_CC[cc]) || { code: "USD", symbol: "$", brl: 5.05 };
+}
+
+// Translation hello hint by country code
+const HELLO_BY_CC: Record<string, string> = {
+  FR: "Bonjour", DE: "Hallo", ES: "Hola", IT: "Ciao", PT: "Olá",
+  JP: "こんにちは", CN: "你好", NL: "Hallo", US: "Hello", GB: "Hello",
+  TH: "สวัสดี", AE: "مرحبا", BR: "Olá",
+};
 
 // Risk markers are generated dynamically around the user's position.
 type RiskPoint = { lat: number; lng: number; level: RiskLevel; label: string };
