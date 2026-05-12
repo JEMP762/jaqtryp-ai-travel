@@ -672,17 +672,27 @@ function AlertsFeed({ city }: { city: string | null }) {
   );
 }
 
-function PriceWatch() {
+function PriceWatch({
+  city,
+  countryCode,
+}: {
+  city: string | null;
+  countryCode: string | null;
+}) {
+  const cur = localCurrency(countryCode);
+  const where = city || "centro";
   const items = [
-    { name: "Le Petit Bistro", avg: 22, charged: 38, type: "Restaurante" },
-    { name: "Hotel Lumière", avg: 140, charged: 152, type: "Hotel" },
-    { name: "Tour Eiffel — café", avg: 4, charged: 9, type: "Café" },
+    { name: `Bistro ${where}`, avg: 22, charged: 38, type: "Restaurante" },
+    { name: `Hotel ${where} Central`, avg: 140, charged: 152, type: "Hotel" },
+    { name: `Café ${where}`, avg: 4, charged: 9, type: "Café" },
   ];
   return (
     <GlassCard>
       <div className="mb-4 flex items-center gap-2">
         <DollarSign className="h-4 w-4 text-primary" />
-        <div className="font-semibold">Painel de preços</div>
+        <div className="font-semibold">
+          Painel de preços{city ? ` · ${city}` : ""}
+        </div>
       </div>
       <div className="space-y-3">
         {items.map((it) => {
@@ -714,11 +724,12 @@ function PriceWatch() {
                 </div>
               </div>
               <div className="mt-2 flex items-center gap-2 text-[11px] text-muted-foreground">
-                Médio: €{it.avg} · Cobrado: <span className="text-foreground">€{it.charged}</span>
+                Médio: {cur.symbol}{it.avg} · Cobrado:{" "}
+                <span className="text-foreground">{cur.symbol}{it.charged}</span>
               </div>
               {bad && (
                 <p className="mt-2 text-xs text-red-300">
-                  ⚠ Possível golpe turístico — {diff}% acima da média da região.
+                  ⚠ Possível golpe turístico — {diff}% acima da média de {where}.
                 </p>
               )}
             </div>
@@ -729,12 +740,14 @@ function PriceWatch() {
   );
 }
 
-function ScamsCarousel() {
+function ScamsCarousel({ country }: { country: string | null }) {
   return (
     <GlassCard>
       <div className="mb-4 flex items-center gap-2">
         <ShieldCheck className="h-4 w-4 text-primary" />
-        <div className="font-semibold">Golpes comuns na França</div>
+        <div className="font-semibold">
+          Golpes comuns{country ? ` em ${country}` : ""}
+        </div>
       </div>
       <div className="-mx-2 flex snap-x snap-mandatory gap-3 overflow-x-auto px-2 pb-2">
         {COMMON_SCAMS.map((s) => (
