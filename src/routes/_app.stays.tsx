@@ -76,6 +76,16 @@ function StaysPage() {
     onError: (e) => toast.error((e as Error).message),
   });
 
+  // Auto-trigger when arriving from a deal (?auto=true)
+  const autoRan = React.useRef(false);
+  React.useEffect(() => {
+    if (sp.auto && !autoRan.current && form.query) {
+      autoRan.current = true;
+      search.mutate();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sp.auto]);
+
   const loadRates = useMutation({
     mutationFn: (id: string) => ratesFn({ data: { search_result_id: id } }),
     onSuccess: (d) => setDetails(d),
