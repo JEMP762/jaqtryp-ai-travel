@@ -67,13 +67,32 @@ function StaysPage() {
     phone_number: "",
   });
 
+  const [apiUnavailable, setApiUnavailable] = React.useState(false);
+
+  const bookingFallback = React.useMemo(() => {
+    const q = encodeURIComponent(form.query || "");
+    return `https://www.booking.com/searchresults.html?ss=${q}&checkin=${form.check_in_date}&checkout=${form.check_out_date}&group_adults=${form.guests}`;
+  }, [form]);
+
   const search = useMutation({
     mutationFn: () => searchFn({ data: form }),
     onSuccess: (d) => {
+      setApiUnavailable(false);
       setResults(d.results);
       if (!d.results.length) toast.message("Nenhum resultado encontrado");
     },
-    onError: (e) => toast.error((e as Error).message),
+    onError: (e) => {
+      const msg = (e as Error).message || "";
+      if (msg.includes("403") || /forbidden/i.test(msg)) {
+        setApiUnavailable(true);
+        toast.error("Hospedagens indisponíveis no momento", {
+          description: "Abrindo busca no Booking.com…",
+          action: { label: "Abrir Booking", onClick: () => window.open(bookingFallback, "_blank", "noopener,noreferrer") },
+        });
+      } else {
+        toast.error(msg);
+      }
+    },
   });
 
   // Auto-trigger when arriving from a deal (?auto=true)
