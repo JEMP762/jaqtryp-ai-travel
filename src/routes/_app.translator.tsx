@@ -150,7 +150,7 @@ function TranslatorPage() {
     window.speechSynthesis.speak(u);
   };
 
-  const startListening = () => {
+  const startListening = async () => {
     if (typeof window === "undefined") return;
     const SR =
       (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -162,6 +162,48 @@ function TranslatorPage() {
       recognitionRef.current?.stop();
       return;
     }
+
+    // Verifica contexto seguro (HTTPS) — necessário para mic
+    if (!window.isSecureContext) {
+      toast.error("Microfone requer HTTPS. Abra o app em uma URL segura.");
+      return;
+    }
+
+    // Pede permissão de mic explicitamente antes do SpeechRecognition.
+    // Isso resolve o "not-allowed" no Chrome quando a permissão ainda não foi concedida.
+    try {
+      if (navigator.permissions) {
+        try {
+          const status = await navigator.permissions.query({ name: "microphone" as PermissionName });
+          if (status.state === "denied") {
+            toast.error(
+              "Microfone bloqueado. Clique no cadeado da barra de endereço e permita o microfone para este site.",
+            );
+            return;
+          }
+        } catch {
+          /* Safari não suporta query de microphone */
+        }
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Libera imediatamente — só queríamos disparar o prompt de permissão
+      stream.getTracks().forEach((tr) => tr.stop());
+    } catch (err: any) {
+      const name = err?.name || "";
+      if (name === "NotAllowedError" || name === "SecurityError") {
+        toast.error(
+          "Permissão do microfone negada. Se estiver no preview, abra em nova aba e permita o microfone.",
+        );
+      } else if (name === "NotFoundError") {
+        toast.error("Nenhum microfone encontrado no dispositivo.");
+      } else if (name === "NotReadableError") {
+        toast.error("Microfone em uso por outro aplicativo.");
+      } else {
+        toast.error("Não foi possível acessar o microfone: " + (err?.message || name));
+      }
+      return;
+    }
+
     const rec = new SR();
     rec.lang = bcp47Of(from);
     rec.interimResults = true;
@@ -177,7 +219,18 @@ function TranslatorPage() {
       setSrc((finalText + interim).trim());
     };
     rec.onerror = (e: any) => {
-      toast.error("Erro no microfone: " + (e.error || "desconhecido"));
+      const code = e?.error || "desconhecido";
+      const msg =
+        code === "not-allowed" || code === "service-not-allowed"
+          ? "Microfone bloqueado pelo navegador. Permita o acesso e tente novamente."
+          : code === "no-speech"
+            ? "Nenhuma fala detectada. Tente novamente."
+            : code === "audio-capture"
+              ? "Microfone indisponível. Verifique seu dispositivo."
+              : code === "network"
+                ? "Sem conexão para reconhecimento de voz."
+                : "Erro no microfone: " + code;
+      toast.error(msg);
       setListening(false);
     };
     rec.onend = async () => {
