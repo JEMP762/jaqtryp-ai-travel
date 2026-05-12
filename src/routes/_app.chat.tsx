@@ -13,12 +13,14 @@ export const Route = createFileRoute("/_app/chat")({
 });
 
 type Msg = { role: "user" | "assistant"; content: string };
+type Profile = "economico" | "mochileiro" | "conforto" | "premium" | "luxo";
 
 function ChatPage() {
   const { t, lang } = useI18n();
   const [messages, setMessages] = React.useState<Msg[]>([]);
   const [input, setInput] = React.useState("");
   const [streaming, setStreaming] = React.useState(false);
+  const [profile, setProfile] = React.useState<Profile>("conforto");
   const scrollRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
