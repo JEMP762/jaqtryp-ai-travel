@@ -467,26 +467,47 @@ function ScoreCard({ score }: { score: number }) {
   );
 }
 
-function RiskMap() {
+function RiskMap({ center, live }: { center: [number, number]; live: boolean }) {
   const ref = React.useRef<HTMLDivElement>(null);
+  const mapRef = React.useRef<import("leaflet").Map | null>(null);
+  const layerRef = React.useRef<import("leaflet").LayerGroup | null>(null);
+
   React.useEffect(() => {
     let cancelled = false;
-    let map: import("leaflet").Map | null = null;
     (async () => {
       const L = (await import("leaflet")).default;
       await import("leaflet/dist/leaflet.css");
-      if (cancelled || !ref.current) return;
-      map = L.map(ref.current, {
-        center: USER_POS,
-        zoom: 13,
+      if (cancelled || !ref.current || mapRef.current) return;
+      const map = L.map(ref.current, {
+        center,
+        zoom: 14,
         zoomControl: false,
         attributionControl: false,
       });
+      mapRef.current = map;
       L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
         maxZoom: 19,
       }).addTo(map);
+      layerRef.current = L.layerGroup().addTo(map);
+    })();
+    return () => {
+      cancelled = true;
+      mapRef.current?.remove();
+      mapRef.current = null;
+    };
+  }, []);
 
-      // user marker
+  // Re-render markers when center changes
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const L = (await import("leaflet")).default;
+      const map = mapRef.current;
+      const layer = layerRef.current;
+      if (!map || !layer || cancelled) return;
+      map.setView(center, 14);
+      layer.clearLayers();
+
       const userIcon = L.divIcon({
         className: "",
         html: `<div style="position:relative;width:28px;height:28px">
@@ -496,16 +517,11 @@ function RiskMap() {
         iconSize: [28, 28],
         iconAnchor: [14, 14],
       });
-      L.marker(USER_POS, { icon: userIcon }).addTo(map);
+      L.marker(center, { icon: userIcon }).bindTooltip(live ? "Você está aqui" : "Posição padrão", { direction: "top" }).addTo(layer);
 
-      // risk zones (heatmap-style circles)
-      MAP_RISKS.forEach((r) => {
+      generateRisksAround(center).forEach((r) => {
         const color =
-          r.level === "high"
-            ? "#ef4444"
-            : r.level === "medium"
-              ? "#facc15"
-              : "#10b981";
+          r.level === "high" ? "#ef4444" : r.level === "medium" ? "#facc15" : "#10b981";
         L.circle([r.lat, r.lng], {
           radius: r.level === "high" ? 350 : r.level === "medium" ? 250 : 200,
           color,
@@ -513,15 +529,14 @@ function RiskMap() {
           fillColor: color,
           fillOpacity: 0.25,
         })
-          .addTo(map!)
+          .addTo(layer)
           .bindTooltip(r.label, { direction: "top" });
       });
     })();
     return () => {
       cancelled = true;
-      map?.remove();
     };
-  }, []);
+  }, [center, live]);
 
   return (
     <GlassCard className="!p-0">
