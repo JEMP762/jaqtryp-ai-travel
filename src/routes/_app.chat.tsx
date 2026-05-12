@@ -36,6 +36,12 @@ function ChatPage() {
     setInput("");
     setStreaming(true);
 
+    const profileHint: Msg = {
+      role: "user",
+      content: `[Contexto JAQ Price] Perfil de viagem do usuário: ${profile}. Adapte recomendações de preço, hospedagem e gastos a esse perfil.`,
+    };
+    const payloadMessages = [profileHint, ...next];
+
     let assistantSoFar = "";
     const upsert = (chunk: string) => {
       assistantSoFar += chunk;
