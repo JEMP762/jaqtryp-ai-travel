@@ -148,7 +148,26 @@ function ChatPage() {
     <div className="mx-auto flex h-[100dvh] max-w-4xl flex-col px-4 md:px-8">
       <div className="border-b border-border py-4">
         <h1 className="text-xl font-semibold">{t("dash.chat")}</h1>
-        <p className="text-xs text-muted-foreground">{t("hero.badge")}</p>
+        <p className="text-xs text-muted-foreground">
+          {t("hero.badge")} · <span className="text-primary">JAQ Price</span>{" "}
+          {lang === "pt" ? "ativo" : "active"}
+        </p>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {profiles.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setProfile(p.id)}
+              className={cn(
+                "rounded-full border px-2.5 py-1 text-xs transition-colors",
+                profile === p.id
+                  ? "border-primary bg-primary/15 text-primary"
+                  : "border-border bg-card/50 text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div ref={scrollRef} className="flex-1 space-y-6 overflow-y-auto py-6">
