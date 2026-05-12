@@ -17,6 +17,7 @@ import { Route as ApiChatRouteImport } from './routes/api.chat'
 import { Route as ApiAiRouteImport } from './routes/api.ai'
 import { Route as AppTranslatorRouteImport } from './routes/_app.translator'
 import { Route as AppStaysRouteImport } from './routes/_app.stays'
+import { Route as AppShieldRouteImport } from './routes/_app.shield'
 import { Route as AppPlannerRouteImport } from './routes/_app.planner'
 import { Route as AppFlightsRouteImport } from './routes/_app.flights'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
@@ -61,6 +62,11 @@ const AppStaysRoute = AppStaysRouteImport.update({
   path: '/stays',
   getParentRoute: () => AppRoute,
 } as any)
+const AppShieldRoute = AppShieldRouteImport.update({
+  id: '/shield',
+  path: '/shield',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppPlannerRoute = AppPlannerRouteImport.update({
   id: '/planner',
   path: '/planner',
@@ -90,6 +96,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AppDashboardRoute
   '/flights': typeof AppFlightsRoute
   '/planner': typeof AppPlannerRoute
+  '/shield': typeof AppShieldRoute
   '/stays': typeof AppStaysRoute
   '/translator': typeof AppTranslatorRoute
   '/api/ai': typeof ApiAiRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AppDashboardRoute
   '/flights': typeof AppFlightsRoute
   '/planner': typeof AppPlannerRoute
+  '/shield': typeof AppShieldRoute
   '/stays': typeof AppStaysRoute
   '/translator': typeof AppTranslatorRoute
   '/api/ai': typeof ApiAiRoute
@@ -118,6 +126,7 @@ export interface FileRoutesById {
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/flights': typeof AppFlightsRoute
   '/_app/planner': typeof AppPlannerRoute
+  '/_app/shield': typeof AppShieldRoute
   '/_app/stays': typeof AppStaysRoute
   '/_app/translator': typeof AppTranslatorRoute
   '/api/ai': typeof ApiAiRoute
@@ -133,6 +142,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/flights'
     | '/planner'
+    | '/shield'
     | '/stays'
     | '/translator'
     | '/api/ai'
@@ -146,6 +156,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/flights'
     | '/planner'
+    | '/shield'
     | '/stays'
     | '/translator'
     | '/api/ai'
@@ -160,6 +171,7 @@ export interface FileRouteTypes {
     | '/_app/dashboard'
     | '/_app/flights'
     | '/_app/planner'
+    | '/_app/shield'
     | '/_app/stays'
     | '/_app/translator'
     | '/api/ai'
@@ -233,6 +245,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppStaysRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/shield': {
+      id: '/_app/shield'
+      path: '/shield'
+      fullPath: '/shield'
+      preLoaderRoute: typeof AppShieldRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/planner': {
       id: '/_app/planner'
       path: '/planner'
@@ -269,6 +288,7 @@ interface AppRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
   AppFlightsRoute: typeof AppFlightsRoute
   AppPlannerRoute: typeof AppPlannerRoute
+  AppShieldRoute: typeof AppShieldRoute
   AppStaysRoute: typeof AppStaysRoute
   AppTranslatorRoute: typeof AppTranslatorRoute
 }
@@ -278,6 +298,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
   AppFlightsRoute: AppFlightsRoute,
   AppPlannerRoute: AppPlannerRoute,
+  AppShieldRoute: AppShieldRoute,
   AppStaysRoute: AppStaysRoute,
   AppTranslatorRoute: AppTranslatorRoute,
 }
