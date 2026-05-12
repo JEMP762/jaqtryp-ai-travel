@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import * as React from "react";
 import {
   Plane,
@@ -11,11 +11,29 @@ import {
   MapPin,
   Filter,
   Sparkles,
+  ExternalLink,
+  ShoppingBag,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+
+// Duffel API is configured (DUFFEL_API_KEY) — flights & stays use internal booking
+const HAS_FLIGHT_API = true;
+const HAS_STAY_API = true;
+
+function externalBookingUrl(deal: Deal): string {
+  if (deal.type === "flight") {
+    const o = deal.origin || "";
+    const d = deal.destination || "";
+    return `https://www.google.com/travel/flights?q=${encodeURIComponent(
+      `voos ${o} para ${d}`,
+    )}`;
+  }
+  const q = `${deal.hotel || ""} ${deal.destination} ${deal.country}`.trim();
+  return `https://www.booking.com/searchresults.html?ss=${encodeURIComponent(q)}`;
+}
 
 export const Route = createFileRoute("/_app/deals")({
   head: () => ({
