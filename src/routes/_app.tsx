@@ -12,6 +12,7 @@ import {
   Languages,
   Plane,
   BedDouble,
+  ShieldCheck,
   LogOut,
   Globe2,
 } from "lucide-react";
