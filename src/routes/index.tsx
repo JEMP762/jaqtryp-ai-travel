@@ -245,6 +245,9 @@ function Landing() {
               );
             })}
           </div>
+          <p className="mt-8 text-center text-xs text-muted-foreground">
+            Assinaturas cobradas em dólar americano (USD). Reservas aéreas continuam em EURO (€).
+          </p>
         </div>
       </section>
 
