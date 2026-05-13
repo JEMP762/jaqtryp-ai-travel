@@ -194,7 +194,7 @@ function Landing() {
               {
                 key: "ultra",
                 price: "$19",
-                period: "/mês",
+                period: "/month",
                 features: [
                   "Tudo do Pro",
                   "Concierge IA prioritário",
