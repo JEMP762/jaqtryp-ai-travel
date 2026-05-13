@@ -60,13 +60,11 @@ function AdminFinancialPage() {
         </Link>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
+      <EurKpis kpis={k} />
+      <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-6 mt-3">
         <Kpi icon={Receipt} label="Reservas" value={String(k?.bookings ?? 0)} />
-        <Kpi icon={DollarSign} label="Receita" value={fmtMoney(k?.totalRevenue ?? 0, "BRL")} />
-        <Kpi icon={TrendingUp} label="Comissão" value={fmtMoney(k?.totalCommission ?? 0, "BRL")} />
-        <Kpi icon={Sparkles} label="Lucro líquido" value={fmtMoney(k?.netProfit ?? 0, "BRL")} highlight />
-        <Kpi icon={Receipt} label="Ticket médio" value={fmtMoney(k?.avgTicket ?? 0, "BRL")} />
-        <Kpi icon={ShoppingBag} label="Upsells" value={String(k?.upsellsSold ?? 0)} />
+        <Kpi icon={Receipt} label="Ticket médio" value={fmtMoney(k?.avgTicket ?? 0, "EUR")} />
+        <Kpi icon={ShoppingBag} label="Upsells vendidos" value={String(k?.upsellsSold ?? 0)} />
       </div>
 
       <div className="mt-6 rounded-2xl border border-border/60 bg-card p-5">
