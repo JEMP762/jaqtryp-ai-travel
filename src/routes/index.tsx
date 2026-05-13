@@ -175,14 +175,14 @@ function Landing() {
               {
                 key: "free",
                 price: "$0",
-                period: "/mês",
+                period: "/month",
                 features: ["3 roteiros IA / mês", "Tradutor texto", "Clima e câmbio"],
                 cta: "default",
               },
               {
                 key: "pro",
                 price: "$9",
-                period: "/mês",
+                period: "/month",
                 features: [
                   "Roteiros ilimitados",
                   "Tradutor voz + câmera",
@@ -194,7 +194,7 @@ function Landing() {
               {
                 key: "ultra",
                 price: "$19",
-                period: "/mês",
+                period: "/month",
                 features: [
                   "Tudo do Pro",
                   "Concierge IA prioritário",
@@ -245,6 +245,9 @@ function Landing() {
               );
             })}
           </div>
+          <p className="mt-8 text-center text-xs text-muted-foreground">
+            Assinaturas cobradas em dólar americano (USD). Reservas aéreas continuam em EURO (€).
+          </p>
         </div>
       </section>
 
