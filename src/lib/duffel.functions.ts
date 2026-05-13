@@ -2,6 +2,7 @@ import { createMiddleware, createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabase } from "@/integrations/supabase/client";
 import { z } from "zod";
+import { applyPricing, DEFAULT_COMMISSION_SETTINGS, type CommissionSettings } from "./pricing";
 
 const DUFFEL_BASE = "https://api.duffel.com";
 const DUFFEL_VERSION = "v2";
@@ -183,6 +184,31 @@ export const createFlightOrder = createServerFn({ method: "POST" })
       status: "confirmed",
       raw: order,
     });
+
+    // Monetization: record commission breakdown (non-blocking)
+    try {
+      const { data: cs } = await supabase
+        .from("commission_settings")
+        .select("markup_type, markup_value, service_fee_type, service_fee_value, default_currency, upsells_enabled")
+        .limit(1)
+        .maybeSingle();
+      const settings = (cs as CommissionSettings) || DEFAULT_COMMISSION_SETTINGS;
+      const b = applyPricing(order.total_amount, order.total_currency, settings);
+      await supabase.from("booking_commissions").insert({
+        user_id: userId,
+        order_kind: "flight",
+        order_id: order.id,
+        original_amount: b.original,
+        markup_amount: b.markup,
+        service_fee_amount: b.serviceFee,
+        final_amount: b.final,
+        currency: b.currency,
+        net_profit: b.netProfit,
+        upsells: [],
+      });
+    } catch (e) {
+      console.error("commission record failed", e);
+    }
 
     return {
       id: order.id,
