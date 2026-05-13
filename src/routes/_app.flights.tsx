@@ -165,6 +165,32 @@ function FlightsPage() {
     onError: (e: any) => toast.error(e.message || "Falha ao reservar"),
   });
 
+  const checkoutMut = useMutation({
+    mutationFn: async () => {
+      if (!selected) throw new Error("Selecione uma oferta");
+      const missing = passengers.some((p) => !p.given_name || !p.family_name || !p.born_on || !p.email || !p.phone_number);
+      if (missing) throw new Error("Preencha os dados de todos os passageiros");
+      try {
+        return await checkoutFn({
+          data: {
+            offer_id: selected.id,
+            original_amount: Number(selected.total_amount),
+            original_currency: selected.total_currency,
+            passengers,
+            origin: selected.slices[0]?.origin,
+            destination: selected.slices[selected.slices.length - 1]?.destination,
+          },
+        });
+      } catch (e) {
+        throw new Error(await unwrapError(e));
+      }
+    },
+    onSuccess: (d) => {
+      if (d?.url) window.location.href = d.url;
+    },
+    onError: (e: any) => toast.error(e.message || "Falha ao iniciar pagamento"),
+  });
+
   // Auto-trigger search when arriving from a deal (?auto=true)
   const autoRan = useRef(false);
   useEffect(() => {
