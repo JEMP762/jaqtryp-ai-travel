@@ -175,7 +175,7 @@ function Landing() {
               {
                 key: "free",
                 price: "$0",
-                period: "/mês",
+                period: "/month",
                 features: ["3 roteiros IA / mês", "Tradutor texto", "Clima e câmbio"],
                 cta: "default",
               },
