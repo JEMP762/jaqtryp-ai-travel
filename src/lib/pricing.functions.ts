@@ -4,15 +4,19 @@ import { z } from "zod";
 import { applyPricing, DEFAULT_COMMISSION_SETTINGS, type CommissionSettings } from "./pricing";
 
 export const getCommissionSettings = createServerFn({ method: "GET" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { supabase } = context;
-    const { data } = await supabase
-      .from("commission_settings")
-      .select("markup_type, markup_value, service_fee_type, service_fee_value, default_currency, upsells_enabled")
-      .limit(1)
-      .maybeSingle();
-    return (data as CommissionSettings) || DEFAULT_COMMISSION_SETTINGS;
+  .handler(async () => {
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data } = await supabaseAdmin
+        .from("commission_settings")
+        .select("markup_type, markup_value, service_fee_type, service_fee_value, default_currency, upsells_enabled")
+        .limit(1)
+        .maybeSingle();
+      return (data as CommissionSettings) || DEFAULT_COMMISSION_SETTINGS;
+    } catch (e) {
+      console.error("getCommissionSettings failed", e);
+      return DEFAULT_COMMISSION_SETTINGS;
+    }
   });
 
 const UpdateSchema = z.object({
