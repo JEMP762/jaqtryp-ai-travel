@@ -3,6 +3,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { adminFinancialSummary, checkIsAdmin } from "@/lib/commission.functions";
 import { fmtMoney } from "@/lib/pricing";
+import { getFxRate } from "@/lib/fx.functions";
+import { convert, fmt } from "@/lib/fx";
 import { TrendingUp, DollarSign, ShoppingBag, Receipt, Sparkles, Settings } from "lucide-react";
 
 export const Route = createFileRoute("/_app/admin/financial")({
