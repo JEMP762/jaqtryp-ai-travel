@@ -8,6 +8,7 @@ import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { searchFlights, createFlightOrder, listFlightOrders } from "@/lib/duffel.functions";
 import { getCommissionSettings } from "@/lib/pricing.functions";
+import { createFlightCheckoutSession } from "@/lib/checkout.functions";
 import { PriceBreakdown } from "@/components/pricing/PriceBreakdown";
 import { UpsellSuggestions } from "@/components/pricing/UpsellSuggestions";
 import { SmartCheckoutSummary } from "@/components/pricing/SmartCheckoutSummary";
@@ -86,6 +87,7 @@ function FlightsPage() {
   const createOrder = useServerFn(createFlightOrder);
   const listOrders = useServerFn(listFlightOrders);
   const settingsFn = useServerFn(getCommissionSettings);
+  const checkoutFn = useServerFn(createFlightCheckoutSession);
   const sp = Route.useSearch();
   const settingsQuery = useQuery({ queryKey: ["commission-settings"], queryFn: () => settingsFn(), retry: false });
 
@@ -161,6 +163,32 @@ function FlightsPage() {
       ordersQuery.refetch();
     },
     onError: (e: any) => toast.error(e.message || "Falha ao reservar"),
+  });
+
+  const checkoutMut = useMutation({
+    mutationFn: async () => {
+      if (!selected) throw new Error("Selecione uma oferta");
+      const missing = passengers.some((p) => !p.given_name || !p.family_name || !p.born_on || !p.email || !p.phone_number);
+      if (missing) throw new Error("Preencha os dados de todos os passageiros");
+      try {
+        return await checkoutFn({
+          data: {
+            offer_id: selected.id,
+            original_amount: Number(selected.total_amount),
+            original_currency: selected.total_currency,
+            passengers,
+            origin: selected.slices[0]?.origin,
+            destination: selected.slices[selected.slices.length - 1]?.destination,
+          },
+        });
+      } catch (e) {
+        throw new Error(await unwrapError(e));
+      }
+    },
+    onSuccess: (d) => {
+      if (d?.url) window.location.href = d.url;
+    },
+    onError: (e: any) => toast.error(e.message || "Falha ao iniciar pagamento"),
   });
 
   // Auto-trigger search when arriving from a deal (?auto=true)
@@ -415,18 +443,29 @@ function FlightsPage() {
                 </div>
               </div>
             ))}
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
-                Em modo de teste da Duffel: a reserva é processada com saldo virtual, sem cobrança real.
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <p className="text-xs text-muted-foreground md:max-w-md">
+                Pague em € com cartão internacional ou brasileiro (3D Secure, Apple/Google Pay) — ou use o saldo de teste Duffel.
               </p>
-              <button
-                type="submit"
-                disabled={orderMut.isPending}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow disabled:opacity-50"
-              >
-                {orderMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ticket className="h-4 w-4" />}
-                Confirmar reserva
-              </button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => checkoutMut.mutate()}
+                  disabled={checkoutMut.isPending}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow disabled:opacity-50"
+                >
+                  {checkoutMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ticket className="h-4 w-4" />}
+                  Pagar em € (cartão)
+                </button>
+                <button
+                  type="submit"
+                  disabled={orderMut.isPending}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-border/60 bg-background/40 px-5 py-2.5 text-sm font-semibold hover:border-primary/60 disabled:opacity-50"
+                >
+                  {orderMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Reservar (saldo Duffel)
+                </button>
+              </div>
             </div>
           </form>
         </div>

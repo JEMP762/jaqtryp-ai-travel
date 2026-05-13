@@ -3,6 +3,8 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { adminFinancialSummary, checkIsAdmin } from "@/lib/commission.functions";
 import { fmtMoney } from "@/lib/pricing";
+import { getFxRate } from "@/lib/fx.functions";
+import { convert, fmt } from "@/lib/fx";
 import { TrendingUp, DollarSign, ShoppingBag, Receipt, Sparkles, Settings } from "lucide-react";
 
 export const Route = createFileRoute("/_app/admin/financial")({
@@ -58,13 +60,11 @@ function AdminFinancialPage() {
         </Link>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-6">
+      <EurKpis kpis={k} />
+      <div className="grid gap-3 md:grid-cols-3 lg:grid-cols-6 mt-3">
         <Kpi icon={Receipt} label="Reservas" value={String(k?.bookings ?? 0)} />
-        <Kpi icon={DollarSign} label="Receita" value={fmtMoney(k?.totalRevenue ?? 0, "BRL")} />
-        <Kpi icon={TrendingUp} label="Comissão" value={fmtMoney(k?.totalCommission ?? 0, "BRL")} />
-        <Kpi icon={Sparkles} label="Lucro líquido" value={fmtMoney(k?.netProfit ?? 0, "BRL")} highlight />
-        <Kpi icon={Receipt} label="Ticket médio" value={fmtMoney(k?.avgTicket ?? 0, "BRL")} />
-        <Kpi icon={ShoppingBag} label="Upsells" value={String(k?.upsellsSold ?? 0)} />
+        <Kpi icon={Receipt} label="Ticket médio" value={fmtMoney(k?.avgTicket ?? 0, "EUR")} />
+        <Kpi icon={ShoppingBag} label="Upsells vendidos" value={String(k?.upsellsSold ?? 0)} />
       </div>
 
       <div className="mt-6 rounded-2xl border border-border/60 bg-card p-5">
@@ -135,3 +135,20 @@ function Kpi({ icon: Icon, label, value, highlight }: { icon: any; label: string
     </div>
   );
 }
+
+function EurKpis({ kpis }: { kpis: any }) {
+  const fxFn = useServerFn(getFxRate);
+  const fx = useQuery({ queryKey: ["fx", "EUR", "BRL"], queryFn: () => fxFn({ data: { base: "EUR", quote: "BRL" } }), retry: false, staleTime: 60 * 60 * 1000 });
+  const rate = fx.data?.rate || 0;
+  const rev = Number(kpis?.totalRevenue ?? 0);
+  const com = Number(kpis?.totalCommission ?? 0);
+  const np = Number(kpis?.netProfit ?? 0);
+  return (
+    <div className="grid gap-3 md:grid-cols-3">
+      <Kpi icon={DollarSign} label="Receita (€)" value={`${fmtMoney(rev, "EUR")}${rate ? ` · ≈ ${fmt(convert(rev, rate), "BRL")}` : ""}`} />
+      <Kpi icon={TrendingUp} label="Comissão (€)" value={`${fmtMoney(com, "EUR")}${rate ? ` · ≈ ${fmt(convert(com, rate), "BRL")}` : ""}`} />
+      <Kpi icon={Sparkles} label="Lucro líquido (€)" value={`${fmtMoney(np, "EUR")}${rate ? ` · ≈ ${fmt(convert(np, rate), "BRL")}` : ""}`} highlight />
+    </div>
+  );
+}
+

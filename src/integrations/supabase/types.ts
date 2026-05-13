@@ -25,6 +25,8 @@ export type Database = {
           order_id: string | null
           order_kind: string
           original_amount: number
+          payment_session_id: string | null
+          provider: string
           service_fee_amount: number
           upsells: Json
           user_id: string
@@ -39,6 +41,8 @@ export type Database = {
           order_id?: string | null
           order_kind: string
           original_amount: number
+          payment_session_id?: string | null
+          provider?: string
           service_fee_amount?: number
           upsells?: Json
           user_id: string
@@ -53,6 +57,8 @@ export type Database = {
           order_id?: string | null
           order_kind?: string
           original_amount?: number
+          payment_session_id?: string | null
+          provider?: string
           service_fee_amount?: number
           upsells?: Json
           user_id?: string
@@ -270,6 +276,30 @@ export type Database = {
         }
         Relationships: []
       }
+      fx_rates: {
+        Row: {
+          base_currency: string
+          fetched_at: string
+          id: string
+          quote_currency: string
+          rate: number
+        }
+        Insert: {
+          base_currency: string
+          fetched_at?: string
+          id?: string
+          quote_currency: string
+          rate: number
+        }
+        Update: {
+          base_currency?: string
+          fetched_at?: string
+          id?: string
+          quote_currency?: string
+          rate?: number
+        }
+        Relationships: []
+      }
       itineraries: {
         Row: {
           activities: Json
@@ -313,6 +343,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      pending_flight_bookings: {
+        Row: {
+          breakdown: Json
+          created_at: string
+          duffel_order_id: string | null
+          error: string | null
+          final_amount: number
+          final_currency: string
+          id: string
+          offer_id: string
+          original_amount: number
+          original_currency: string
+          passengers: Json
+          payment_session_id: string | null
+          payment_status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          breakdown?: Json
+          created_at?: string
+          duffel_order_id?: string | null
+          error?: string | null
+          final_amount: number
+          final_currency: string
+          id?: string
+          offer_id: string
+          original_amount: number
+          original_currency: string
+          passengers?: Json
+          payment_session_id?: string | null
+          payment_status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          breakdown?: Json
+          created_at?: string
+          duffel_order_id?: string | null
+          error?: string | null
+          final_amount?: number
+          final_currency?: string
+          id?: string
+          offer_id?: string
+          original_amount?: number
+          original_currency?: string
+          passengers?: Json
+          payment_session_id?: string | null
+          payment_status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
