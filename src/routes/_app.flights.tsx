@@ -8,6 +8,7 @@ import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { searchFlights, createFlightOrder, listFlightOrders } from "@/lib/duffel.functions";
 import { getCommissionSettings } from "@/lib/pricing.functions";
+import { createFlightCheckoutSession } from "@/lib/checkout.functions";
 import { PriceBreakdown } from "@/components/pricing/PriceBreakdown";
 import { UpsellSuggestions } from "@/components/pricing/UpsellSuggestions";
 import { SmartCheckoutSummary } from "@/components/pricing/SmartCheckoutSummary";
