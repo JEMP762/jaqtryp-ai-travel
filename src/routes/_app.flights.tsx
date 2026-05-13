@@ -7,6 +7,10 @@ import { toast } from "sonner";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { searchFlights, createFlightOrder, listFlightOrders } from "@/lib/duffel.functions";
+import { getCommissionSettings } from "@/lib/pricing.functions";
+import { PriceBreakdown } from "@/components/pricing/PriceBreakdown";
+import { UpsellSuggestions } from "@/components/pricing/UpsellSuggestions";
+import { SmartCheckoutSummary } from "@/components/pricing/SmartCheckoutSummary";
 import { useAuth } from "@/hooks/useAuth";
 
 const flightsSearchSchema = z.object({
@@ -81,7 +85,9 @@ function FlightsPage() {
   const search = useServerFn(searchFlights);
   const createOrder = useServerFn(createFlightOrder);
   const listOrders = useServerFn(listFlightOrders);
+  const settingsFn = useServerFn(getCommissionSettings);
   const sp = Route.useSearch();
+  const settingsQuery = useQuery({ queryKey: ["commission-settings"], queryFn: () => settingsFn(), retry: false });
 
   const [form, setForm] = useState(() => ({
     origin: sp.origin || "GRU",
