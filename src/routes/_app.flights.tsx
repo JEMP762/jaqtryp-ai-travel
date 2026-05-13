@@ -260,10 +260,10 @@ function FlightsPage() {
             onChange={(e) => setForm({ ...form, cabin_class: e.target.value as any })}
             className="input"
           >
-            <option value="economy">Econômica</option>
-            <option value="premium_economy">Premium Econômica</option>
-            <option value="business">Executiva</option>
-            <option value="first">Primeira</option>
+            <option value="economy" className="bg-background text-foreground">Econômica</option>
+            <option value="premium_economy" className="bg-background text-foreground">Premium Econômica</option>
+            <option value="business" className="bg-background text-foreground">Executiva</option>
+            <option value="first" className="bg-background text-foreground">Primeira</option>
           </select>
         </Field>
         <div className="md:col-span-6">
