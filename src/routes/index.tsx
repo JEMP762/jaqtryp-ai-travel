@@ -182,7 +182,7 @@ function Landing() {
               {
                 key: "pro",
                 price: "$9",
-                period: "/mês",
+                period: "/month",
                 features: [
                   "Roteiros ilimitados",
                   "Tradutor voz + câmera",
