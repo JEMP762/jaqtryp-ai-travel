@@ -36,9 +36,13 @@ function ChatPage() {
     setInput("");
     setStreaming(true);
 
+    // Small human-like "thinking" delay before the assistant starts typing
+    const thinkMs = 700 + Math.floor(Math.random() * 900);
+    await new Promise((r) => setTimeout(r, thinkMs));
+
     const profileHint: Msg = {
       role: "user",
-      content: `[Contexto JAQ Price] Perfil de viagem do usuário: ${profile}. Adapte recomendações de preço, hospedagem e gastos a esse perfil.`,
+      content: `[Contexto JAQ Price] Perfil de viagem do usuário: ${profile}. Adapte recomendações de preço, hospedagem e gastos a esse perfil. Responda em tom natural, humano e amigável, como um amigo viajante experiente — evite soar robótico.`,
     };
     const payloadMessages = [profileHint, ...next];
 
