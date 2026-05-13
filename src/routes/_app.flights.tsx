@@ -351,6 +351,22 @@ function FlightsPage() {
               ← Voltar
             </button>
           </div>
+
+          <div className="mb-4 grid gap-3 md:grid-cols-2">
+            <PriceBreakdown
+              originalAmount={selected.total_amount}
+              currency={selected.total_currency}
+              settings={settingsQuery.data ?? undefined}
+            />
+            <SmartCheckoutSummary
+              title={`${selected.slices[0]?.origin} → ${selected.slices[selected.slices.length - 1]?.destination}`}
+              subtitle={`${selected.owner.name || "Companhia"} · ${selected.slices.length > 1 ? "ida e volta" : "só ida"}`}
+            />
+          </div>
+
+          <div className="mb-4">
+            <UpsellSuggestions kind="flight" currency={selected.total_currency} enabled={settingsQuery.data?.upsells_enabled ?? true} />
+          </div>
           <form
             onSubmit={(e) => {
               e.preventDefault();
