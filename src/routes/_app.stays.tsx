@@ -20,6 +20,10 @@ import {
   getStayRates,
   createStayBooking,
 } from "@/lib/stays.functions";
+import { getCommissionSettings } from "@/lib/pricing.functions";
+import { PriceBreakdown } from "@/components/pricing/PriceBreakdown";
+import { UpsellSuggestions } from "@/components/pricing/UpsellSuggestions";
+import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 
 const staysSearchSchema = z.object({
@@ -46,7 +50,9 @@ function StaysPage() {
   const searchFn = useServerFn(searchStays);
   const ratesFn = useServerFn(getStayRates);
   const bookFn = useServerFn(createStayBooking);
+  const settingsFn = useServerFn(getCommissionSettings);
   const sp = Route.useSearch();
+  const settingsQuery = useQuery({ queryKey: ["commission-settings"], queryFn: () => settingsFn(), retry: false });
 
   const [form, setForm] = React.useState(() => ({
     query: sp.query || "Lisboa",
@@ -397,12 +403,23 @@ function StaysPage() {
               <div className="rounded-lg bg-muted/30 p-3 text-sm">
                 <div className="font-medium">{bookingRate.room_name}</div>
                 <div className="text-muted-foreground">
-                  Total:{" "}
+                  Tarifa base:{" "}
                   <span className="font-bold text-foreground">
                     {bookingRate.total_currency} {bookingRate.total_amount}
                   </span>
                 </div>
               </div>
+              <PriceBreakdown
+                originalAmount={bookingRate.total_amount}
+                currency={bookingRate.total_currency}
+                settings={settingsQuery.data ?? undefined}
+                compact
+              />
+              <UpsellSuggestions
+                kind="stay"
+                currency={bookingRate.total_currency}
+                enabled={settingsQuery.data?.upsells_enabled ?? true}
+              />
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <Label>Nome</Label>
