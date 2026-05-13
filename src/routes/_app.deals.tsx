@@ -88,7 +88,18 @@ type Deal = {
   expiresInH: number;
 };
 
-const SEED: Deal[] = [
+// Daily seed — rotates each calendar day so deals "refresh" automatically
+function dailySeed() {
+  const d = new Date();
+  return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+}
+function hash(str: string, salt: number) {
+  let h = salt >>> 0;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+const POOL: Deal[] = [
   {
     id: "f1",
     type: "flight",
