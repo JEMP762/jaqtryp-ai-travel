@@ -443,18 +443,29 @@ function FlightsPage() {
                 </div>
               </div>
             ))}
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
-                Em modo de teste da Duffel: a reserva é processada com saldo virtual, sem cobrança real.
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <p className="text-xs text-muted-foreground md:max-w-md">
+                Pague em € com cartão internacional ou brasileiro (3D Secure, Apple/Google Pay) — ou use o saldo de teste Duffel.
               </p>
-              <button
-                type="submit"
-                disabled={orderMut.isPending}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow disabled:opacity-50"
-              >
-                {orderMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ticket className="h-4 w-4" />}
-                Confirmar reserva
-              </button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => checkoutMut.mutate()}
+                  disabled={checkoutMut.isPending}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gradient-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow-glow disabled:opacity-50"
+                >
+                  {checkoutMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Ticket className="h-4 w-4" />}
+                  Pagar em € (cartão)
+                </button>
+                <button
+                  type="submit"
+                  disabled={orderMut.isPending}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-border/60 bg-background/40 px-5 py-2.5 text-sm font-semibold hover:border-primary/60 disabled:opacity-50"
+                >
+                  {orderMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Reservar (saldo Duffel)
+                </button>
+              </div>
             </div>
           </form>
         </div>
