@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Send, Sparkles, User2, Loader2 } from "lucide-react";
+import { Send, Sparkles, User2 } from "lucide-react";
 import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
@@ -36,9 +36,13 @@ function ChatPage() {
     setInput("");
     setStreaming(true);
 
+    // Small human-like "thinking" delay before the assistant starts typing
+    const thinkMs = 700 + Math.floor(Math.random() * 900);
+    await new Promise((r) => setTimeout(r, thinkMs));
+
     const profileHint: Msg = {
       role: "user",
-      content: `[Contexto JAQ Price] Perfil de viagem do usuário: ${profile}. Adapte recomendações de preço, hospedagem e gastos a esse perfil.`,
+      content: `[Contexto JAQ Price] Perfil de viagem do usuário: ${profile}. Adapte recomendações de preço, hospedagem e gastos a esse perfil. Responda em tom natural, humano e amigável, como um amigo viajante experiente — evite soar robótico.`,
     };
     const payloadMessages = [profileHint, ...next];
 
@@ -216,8 +220,17 @@ function ChatPage() {
           </div>
         ))}
         {streaming && messages[messages.length - 1]?.role === "user" && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("common.loading")}
+          <div className="flex gap-3">
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-primary text-primary-foreground shadow-glow">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <div className="rounded-2xl border border-border bg-card px-4 py-3">
+              <div className="flex items-center gap-1">
+                <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" />
+              </div>
+            </div>
           </div>
         )}
       </div>

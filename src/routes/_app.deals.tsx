@@ -88,7 +88,18 @@ type Deal = {
   expiresInH: number;
 };
 
-const SEED: Deal[] = [
+// Daily seed — rotates each calendar day so deals "refresh" automatically
+function dailySeed() {
+  const d = new Date();
+  return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+}
+function hash(str: string, salt: number) {
+  let h = salt >>> 0;
+  for (let i = 0; i < str.length; i++) h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+const POOL: Deal[] = [
   {
     id: "f1",
     type: "flight",
@@ -263,10 +274,41 @@ const SEED: Deal[] = [
 const fmt = (v: number, c: string) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: c }).format(v);
 
+// Build today's deal list from POOL using a daily seed.
+// Each deal gets a fresh expiresAt anchored to "now"; expired ones are excluded.
+function buildDailyDeals(now: Date): Deal[] {
+  const seed = dailySeed();
+  const list: Deal[] = [];
+  for (const base of POOL) {
+    const h = hash(base.id, seed);
+    // 60% of pool surfaces each day, deterministically
+    if (h % 100 < 60 && list.length < 9) {
+      const lifeH = 8 + (h % 40); // 8h..47h total lifespan today
+      const ageH = h % Math.max(1, lifeH); // pretend it was created some hours ago today
+      const remainingH = lifeH - ageH;
+      if (remainingH <= 0) continue;
+      // small daily price jitter (±7%)
+      const jitter = 1 + (((h % 15) - 7) / 100);
+      const price = Math.max(1, Math.round(base.price * jitter));
+      list.push({
+        ...base,
+        price,
+        discount: Math.max(10, Math.round((1 - price / base.oldPrice) * 100)),
+        hot: base.hot && remainingH < 18,
+        expiresInH: remainingH,
+      });
+    }
+  }
+  // ensure at least a few items
+  if (list.length === 0) list.push(...POOL.slice(0, 3));
+  return list.sort((a, b) => b.discount - a.discount);
+}
+
 function DealsDashboard() {
   const [type, setType] = React.useState<"all" | DealType>("all");
   const [scope, setScope] = React.useState<"all" | Scope>("all");
   const [onlyHot, setOnlyHot] = React.useState(false);
+  const [tick, setTick] = React.useState(0);
   const [alertsOn, setAlertsOn] = React.useState<boolean>(() => {
     if (typeof window === "undefined") return true;
     return localStorage.getItem("jaq.deals.alerts") !== "0";
@@ -287,10 +329,19 @@ function DealsDashboard() {
     localStorage.setItem("jaq.deals.subs", JSON.stringify(subs));
   }, [subs]);
 
+  // Re-evaluate every 5min so expired deals fall off and the day-rollover refreshes
+  React.useEffect(() => {
+    const t = setInterval(() => setTick((n) => n + 1), 5 * 60 * 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const today = React.useMemo(() => buildDailyDeals(new Date()), [tick]);
+
   // Simulated push notifications for new deals
   React.useEffect(() => {
     if (!alertsOn) return;
-    const hot = SEED.filter((d) => d.hot);
+    const hot = today.filter((d) => d.hot);
+    if (hot.length === 0) return;
     let i = 0;
     const t = setInterval(() => {
       const d = hot[i % hot.length];
@@ -301,25 +352,25 @@ function DealsDashboard() {
       });
     }, 18000);
     return () => clearInterval(t);
-  }, [alertsOn]);
+  }, [alertsOn, today]);
 
   const deals = React.useMemo(() => {
-    return SEED.filter((d) => (type === "all" ? true : d.type === type))
+    return today
+      .filter((d) => (type === "all" ? true : d.type === type))
       .filter((d) => (scope === "all" ? true : d.scope === scope))
-      .filter((d) => (onlyHot ? d.hot : true))
-      .sort((a, b) => b.discount - a.discount);
-  }, [type, scope, onlyHot]);
+      .filter((d) => (onlyHot ? d.hot : true));
+  }, [today, type, scope, onlyHot]);
 
   const stats = React.useMemo(() => {
-    const flights = SEED.filter((d) => d.type === "flight");
-    const stays = SEED.filter((d) => d.type === "stay");
+    const flights = today.filter((d) => d.type === "flight");
+    const stays = today.filter((d) => d.type === "stay");
     const avg =
-      Math.round(
-        SEED.reduce((s, d) => s + d.discount, 0) / SEED.length,
-      ) || 0;
-    const hot = SEED.filter((d) => d.hot).length;
+      today.length === 0
+        ? 0
+        : Math.round(today.reduce((s, d) => s + d.discount, 0) / today.length);
+    const hot = today.filter((d) => d.hot).length;
     return { flights: flights.length, stays: stays.length, avg, hot };
-  }, []);
+  }, [today]);
 
   const toggleSub = (id: string, title: string) => {
     setSubs((s) => {
