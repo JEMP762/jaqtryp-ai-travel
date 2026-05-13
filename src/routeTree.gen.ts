@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SignupRouteImport } from './routes/signup'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as CheapFlightsRouteImport } from './routes/cheap-flights'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiChatRouteImport } from './routes/api.chat'
@@ -35,6 +36,11 @@ const SignupRoute = SignupRouteImport.update({
 const LoginRoute = LoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheapFlightsRoute = CheapFlightsRouteImport.update({
+  id: '/cheap-flights',
+  path: '/cheap-flights',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -115,6 +121,7 @@ const ApiPublicPaymentsWebhookRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/cheap-flights': typeof CheapFlightsRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/chat': typeof AppChatRoute
@@ -133,6 +140,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/cheap-flights': typeof CheapFlightsRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/chat': typeof AppChatRoute
@@ -153,6 +161,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_app': typeof AppRouteWithChildren
+  '/cheap-flights': typeof CheapFlightsRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
   '/_app/chat': typeof AppChatRoute
@@ -173,6 +182,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/cheap-flights'
     | '/login'
     | '/signup'
     | '/chat'
@@ -191,6 +201,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/cheap-flights'
     | '/login'
     | '/signup'
     | '/chat'
@@ -210,6 +221,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/_app'
+    | '/cheap-flights'
     | '/login'
     | '/signup'
     | '/_app/chat'
@@ -230,6 +242,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AppRoute: typeof AppRouteWithChildren
+  CheapFlightsRoute: typeof CheapFlightsRoute
   LoginRoute: typeof LoginRoute
   SignupRoute: typeof SignupRoute
   ApiAiRoute: typeof ApiAiRoute
@@ -251,6 +264,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cheap-flights': {
+      id: '/cheap-flights'
+      path: '/cheap-flights'
+      fullPath: '/cheap-flights'
+      preLoaderRoute: typeof CheapFlightsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app': {
@@ -392,6 +412,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AppRoute: AppRouteWithChildren,
+  CheapFlightsRoute: CheapFlightsRoute,
   LoginRoute: LoginRoute,
   SignupRoute: SignupRoute,
   ApiAiRoute: ApiAiRoute,
