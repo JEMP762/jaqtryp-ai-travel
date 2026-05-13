@@ -23,6 +23,8 @@ import { Route as AppFlightsRouteImport } from './routes/_app.flights'
 import { Route as AppDealsRouteImport } from './routes/_app.deals'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppChatRouteImport } from './routes/_app.chat'
+import { Route as AppAdminSettingsRouteImport } from './routes/_app.admin.settings'
+import { Route as AppAdminFinancialRouteImport } from './routes/_app.admin.financial'
 
 const SignupRoute = SignupRouteImport.update({
   id: '/signup',
@@ -93,6 +95,16 @@ const AppChatRoute = AppChatRouteImport.update({
   path: '/chat',
   getParentRoute: () => AppRoute,
 } as any)
+const AppAdminSettingsRoute = AppAdminSettingsRouteImport.update({
+  id: '/admin/settings',
+  path: '/admin/settings',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminFinancialRoute = AppAdminFinancialRouteImport.update({
+  id: '/admin/financial',
+  path: '/admin/financial',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -108,6 +120,8 @@ export interface FileRoutesByFullPath {
   '/translator': typeof AppTranslatorRoute
   '/api/ai': typeof ApiAiRoute
   '/api/chat': typeof ApiChatRoute
+  '/admin/financial': typeof AppAdminFinancialRoute
+  '/admin/settings': typeof AppAdminSettingsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -123,6 +137,8 @@ export interface FileRoutesByTo {
   '/translator': typeof AppTranslatorRoute
   '/api/ai': typeof ApiAiRoute
   '/api/chat': typeof ApiChatRoute
+  '/admin/financial': typeof AppAdminFinancialRoute
+  '/admin/settings': typeof AppAdminSettingsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -140,6 +156,8 @@ export interface FileRoutesById {
   '/_app/translator': typeof AppTranslatorRoute
   '/api/ai': typeof ApiAiRoute
   '/api/chat': typeof ApiChatRoute
+  '/_app/admin/financial': typeof AppAdminFinancialRoute
+  '/_app/admin/settings': typeof AppAdminSettingsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -157,6 +175,8 @@ export interface FileRouteTypes {
     | '/translator'
     | '/api/ai'
     | '/api/chat'
+    | '/admin/financial'
+    | '/admin/settings'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -172,6 +192,8 @@ export interface FileRouteTypes {
     | '/translator'
     | '/api/ai'
     | '/api/chat'
+    | '/admin/financial'
+    | '/admin/settings'
   id:
     | '__root__'
     | '/'
@@ -188,6 +210,8 @@ export interface FileRouteTypes {
     | '/_app/translator'
     | '/api/ai'
     | '/api/chat'
+    | '/_app/admin/financial'
+    | '/_app/admin/settings'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -299,6 +323,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppChatRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/admin/settings': {
+      id: '/_app/admin/settings'
+      path: '/admin/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AppAdminSettingsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/financial': {
+      id: '/_app/admin/financial'
+      path: '/admin/financial'
+      fullPath: '/admin/financial'
+      preLoaderRoute: typeof AppAdminFinancialRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -311,6 +349,8 @@ interface AppRouteChildren {
   AppShieldRoute: typeof AppShieldRoute
   AppStaysRoute: typeof AppStaysRoute
   AppTranslatorRoute: typeof AppTranslatorRoute
+  AppAdminFinancialRoute: typeof AppAdminFinancialRoute
+  AppAdminSettingsRoute: typeof AppAdminSettingsRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -322,6 +362,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppShieldRoute: AppShieldRoute,
   AppStaysRoute: AppStaysRoute,
   AppTranslatorRoute: AppTranslatorRoute,
+  AppAdminFinancialRoute: AppAdminFinancialRoute,
+  AppAdminSettingsRoute: AppAdminSettingsRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
