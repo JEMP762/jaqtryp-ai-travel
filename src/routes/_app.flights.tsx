@@ -7,6 +7,10 @@ import { toast } from "sonner";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { searchFlights, createFlightOrder, listFlightOrders } from "@/lib/duffel.functions";
+import { getCommissionSettings } from "@/lib/pricing.functions";
+import { PriceBreakdown } from "@/components/pricing/PriceBreakdown";
+import { UpsellSuggestions } from "@/components/pricing/UpsellSuggestions";
+import { SmartCheckoutSummary } from "@/components/pricing/SmartCheckoutSummary";
 import { useAuth } from "@/hooks/useAuth";
 
 const flightsSearchSchema = z.object({
@@ -81,7 +85,9 @@ function FlightsPage() {
   const search = useServerFn(searchFlights);
   const createOrder = useServerFn(createFlightOrder);
   const listOrders = useServerFn(listFlightOrders);
+  const settingsFn = useServerFn(getCommissionSettings);
   const sp = Route.useSearch();
+  const settingsQuery = useQuery({ queryKey: ["commission-settings"], queryFn: () => settingsFn(), retry: false });
 
   const [form, setForm] = useState(() => ({
     origin: sp.origin || "GRU",
@@ -344,6 +350,22 @@ function FlightsPage() {
             <button onClick={() => setSelected(null)} className="text-sm text-muted-foreground hover:text-foreground">
               ← Voltar
             </button>
+          </div>
+
+          <div className="mb-4 grid gap-3 md:grid-cols-2">
+            <PriceBreakdown
+              originalAmount={selected.total_amount}
+              currency={selected.total_currency}
+              settings={settingsQuery.data ?? undefined}
+            />
+            <SmartCheckoutSummary
+              title={`${selected.slices[0]?.origin} → ${selected.slices[selected.slices.length - 1]?.destination}`}
+              subtitle={`${selected.owner.name || "Companhia"} · ${selected.slices.length > 1 ? "ida e volta" : "só ida"}`}
+            />
+          </div>
+
+          <div className="mb-4">
+            <UpsellSuggestions kind="flight" currency={selected.total_currency} enabled={settingsQuery.data?.upsells_enabled ?? true} />
           </div>
           <form
             onSubmit={(e) => {

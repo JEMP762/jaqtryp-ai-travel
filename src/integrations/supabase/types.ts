@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      booking_commissions: {
+        Row: {
+          created_at: string
+          currency: string
+          final_amount: number
+          id: string
+          markup_amount: number
+          net_profit: number
+          order_id: string | null
+          order_kind: string
+          original_amount: number
+          service_fee_amount: number
+          upsells: Json
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency: string
+          final_amount: number
+          id?: string
+          markup_amount?: number
+          net_profit?: number
+          order_id?: string | null
+          order_kind: string
+          original_amount: number
+          service_fee_amount?: number
+          upsells?: Json
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          final_amount?: number
+          id?: string
+          markup_amount?: number
+          net_profit?: number
+          order_id?: string | null
+          order_kind?: string
+          original_amount?: number
+          service_fee_amount?: number
+          upsells?: Json
+          user_id?: string
+        }
+        Relationships: []
+      }
       chat_conversations: {
         Row: {
           created_at: string
@@ -83,6 +128,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      commission_settings: {
+        Row: {
+          default_currency: string
+          id: string
+          markup_type: string
+          markup_value: number
+          service_fee_type: string
+          service_fee_value: number
+          updated_at: string
+          updated_by: string | null
+          upsells_enabled: boolean
+        }
+        Insert: {
+          default_currency?: string
+          id?: string
+          markup_type?: string
+          markup_value?: number
+          service_fee_type?: string
+          service_fee_value?: number
+          updated_at?: string
+          updated_by?: string | null
+          upsells_enabled?: boolean
+        }
+        Update: {
+          default_currency?: string
+          id?: string
+          markup_type?: string
+          markup_value?: number
+          service_fee_type?: string
+          service_fee_value?: number
+          updated_at?: string
+          updated_by?: string | null
+          upsells_enabled?: boolean
+        }
+        Relationships: []
       }
       favorites: {
         Row: {
@@ -445,7 +526,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "free" | "premium" | "ultra"
+      app_role: "free" | "premium" | "ultra" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -573,7 +654,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["free", "premium", "ultra"],
+      app_role: ["free", "premium", "ultra", "admin"],
     },
   },
 } as const
