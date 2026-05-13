@@ -220,8 +220,17 @@ function ChatPage() {
           </div>
         ))}
         {streaming && messages[messages.length - 1]?.role === "user" && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Loader2 className="h-3.5 w-3.5 animate-spin" /> {t("common.loading")}
+          <div className="flex gap-3">
+            <div className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-primary text-primary-foreground shadow-glow">
+              <Sparkles className="h-4 w-4" />
+            </div>
+            <div className="rounded-2xl border border-border bg-card px-4 py-3">
+              <div className="flex items-center gap-1">
+                <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-muted-foreground" />
+              </div>
+            </div>
           </div>
         )}
       </div>
