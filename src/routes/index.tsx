@@ -226,6 +226,14 @@ function Landing() {
                     <span className="text-5xl font-bold">{p.price}</span>
                     <span className="text-muted-foreground">{p.period}</span>
                   </div>
+                  {p.key !== "free" && (
+                    <p className="mt-2 text-sm text-primary">
+                      {p.key === "pro" ? "ou $97.20/ano" : "ou $205.20/ano"}
+                      <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold">
+                        −10%
+                      </span>
+                    </p>
+                  )}
                   <ul className="mt-6 space-y-3 text-sm">
                     {p.features.map((f) => (
                       <li key={f} className="flex items-start gap-2">
