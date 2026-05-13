@@ -87,6 +87,7 @@ function FlightsPage() {
   const createOrder = useServerFn(createFlightOrder);
   const listOrders = useServerFn(listFlightOrders);
   const settingsFn = useServerFn(getCommissionSettings);
+  const checkoutFn = useServerFn(createFlightCheckoutSession);
   const sp = Route.useSearch();
   const settingsQuery = useQuery({ queryKey: ["commission-settings"], queryFn: () => settingsFn(), retry: false });
 
