@@ -78,5 +78,6 @@ export async function verifyStripeWebhook(req: Request, env: StripeEnv): Promise
   const expected = Buffer.from(new Uint8Array(signed)).toString('hex');
   if (!v1Signatures.includes(expected)) throw new Error('Invalid webhook signature');
 
-  return { event: JSON.parse(body), rawBody: body } as any && JSON.parse(body);
+  return JSON.parse(body);
 }
+
