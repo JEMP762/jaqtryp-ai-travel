@@ -22,6 +22,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import type { TKey } from "@/lib/i18n/translations";
+import { useAuth } from "@/hooks/useAuth";
+import { useSubscriptionCheckout } from "@/hooks/useSubscriptionCheckout";
 
 export const Route = createFileRoute("/")({
   component: Landing,
