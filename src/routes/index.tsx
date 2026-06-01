@@ -46,6 +46,9 @@ function Landing() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const [query, setQuery] = React.useState("");
+  const [billing, setBilling] = React.useState<"monthly" | "yearly">("monthly");
+  const { user } = useAuth();
+  const { openCheckout, checkoutDialog } = useSubscriptionCheckout();
 
   const onPlan = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,6 +58,19 @@ function Landing() {
       search: q ? { intent: q } : undefined,
     });
   };
+
+  const handleSubscribe = (planKey: "pro" | "ultra") => {
+    if (!user) {
+      navigate({ to: "/signup", search: { intent: `subscribe:${planKey}:${billing}` } as any });
+      return;
+    }
+    const priceId =
+      planKey === "pro"
+        ? billing === "yearly" ? "jaqtryp_pro_yearly" : "jaqtryp_pro_monthly"
+        : billing === "yearly" ? "jaqtryp_ultra_yearly" : "jaqtryp_ultra_monthly";
+    openCheckout({ priceId });
+  };
+
 
   return (
     <div className="min-h-screen bg-background text-foreground">
