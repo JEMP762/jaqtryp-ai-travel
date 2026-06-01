@@ -236,7 +236,9 @@ async function handleSubscriptionEvent(event: any, env: "sandbox" | "live") {
     );
 
     // Promote user_role to pro/ultra based on price
-    const role = priceId?.startsWith("jaqtryp_ultra") ? "ultra" : priceId?.startsWith("jaqtryp_pro") ? "pro" : null;
+    const role: "ultra" | "premium" | null = priceId?.startsWith("jaqtryp_ultra")
+      ? "ultra"
+      : priceId?.startsWith("jaqtryp_pro") ? "premium" : null;
     if (role && (obj.status === "active" || obj.status === "trialing")) {
       await supabaseAdmin.from("user_roles").upsert({ user_id: userId, role }, { onConflict: "user_id,role" });
     }
