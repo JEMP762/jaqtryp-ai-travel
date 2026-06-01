@@ -101,13 +101,44 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
     handlers: {
       POST: async ({ request }) => {
         const url = new URL(request.url);
-        const env = url.searchParams.get("env") || "sandbox";
+        const env = (url.searchParams.get("env") || "sandbox") as "sandbox" | "live";
+
+        const body = await request.text();
+        const stripeSig = request.headers.get("stripe-signature");
+
+        // === Stripe-format webhook (subscriptions) ===
+        if (stripeSig) {
+          const secret =
+            env === "live"
+              ? process.env.PAYMENTS_LIVE_WEBHOOK_SECRET
+              : process.env.PAYMENTS_SANDBOX_WEBHOOK_SECRET;
+          if (!secret) {
+            console.error("[payments/webhook] missing stripe webhook secret");
+            return new Response("Misconfigured", { status: 500 });
+          }
+          try {
+            await verifyStripe(body, stripeSig, secret);
+          } catch (e: any) {
+            console.warn("[payments/webhook] invalid stripe signature", e?.message);
+            return new Response("Invalid signature", { status: 401 });
+          }
+          let event: any;
+          try { event = JSON.parse(body); } catch { return new Response("Invalid JSON", { status: 400 }); }
+          try {
+            await handleSubscriptionEvent(event, env);
+          } catch (e: any) {
+            console.error("[payments/webhook] subscription error", e?.message || e);
+            return new Response(JSON.stringify({ ok: false, error: e?.message }), { status: 500 });
+          }
+          return new Response("ok", { status: 200 });
+        }
+
+        // === Lovable gateway format (flight bookings) ===
         const secret =
           env === "live"
             ? process.env.PAYMENTS_WEBHOOK_SECRET
             : process.env.PAYMENTS_SANDBOX_WEBHOOK_SECRET || process.env.PAYMENTS_WEBHOOK_SECRET;
 
-        const body = await request.text();
         const sig =
           request.headers.get("x-lovable-signature") ||
           request.headers.get("lovable-signature") ||
@@ -119,11 +150,7 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
         }
 
         let event: any;
-        try {
-          event = JSON.parse(body);
-        } catch {
-          return new Response("Invalid JSON", { status: 400 });
-        }
+        try { event = JSON.parse(body); } catch { return new Response("Invalid JSON", { status: 400 }); }
 
         const type: string = event?.type || event?.event || "";
         const data = event?.data?.object || event?.data || event;
@@ -154,3 +181,72 @@ export const Route = createFileRoute("/api/public/payments/webhook")({
     },
   },
 });
+
+async function verifyStripe(body: string, signature: string, secret: string) {
+  let timestamp: string | undefined;
+  const v1: string[] = [];
+  for (const part of signature.split(",")) {
+    const [k, v] = part.split("=", 2);
+    if (k === "t") timestamp = v;
+    if (k === "v1") v1.push(v);
+  }
+  if (!timestamp || v1.length === 0) throw new Error("Invalid signature format");
+  if (Math.abs(Date.now() / 1000 - Number(timestamp)) > 300) throw new Error("Timestamp too old");
+  const key = await crypto.subtle.importKey(
+    "raw", new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" }, false, ["sign"]
+  );
+  const signed = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(`${timestamp}.${body}`));
+  const expected = Buffer.from(new Uint8Array(signed)).toString("hex");
+  if (!v1.includes(expected)) throw new Error("Invalid webhook signature");
+}
+
+async function handleSubscriptionEvent(event: any, env: "sandbox" | "live") {
+  const type = event?.type;
+  const obj = event?.data?.object;
+  if (!obj) return;
+
+  if (type === "customer.subscription.created" || type === "customer.subscription.updated") {
+    const userId = obj.metadata?.userId;
+    if (!userId) { console.warn("[subscription] missing userId"); return; }
+    const item = obj.items?.data?.[0];
+    const priceId =
+      item?.price?.lookup_key ||
+      item?.price?.metadata?.lovable_external_id ||
+      item?.price?.id;
+    const productId = item?.price?.product;
+    const periodStart = item?.current_period_start ?? obj.current_period_start;
+    const periodEnd = item?.current_period_end ?? obj.current_period_end;
+
+    await supabaseAdmin.from("subscriptions").upsert(
+      {
+        user_id: userId,
+        stripe_subscription_id: obj.id,
+        stripe_customer_id: obj.customer,
+        product_id: productId,
+        price_id: priceId,
+        status: obj.status,
+        current_period_start: periodStart ? new Date(periodStart * 1000).toISOString() : null,
+        current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
+        cancel_at_period_end: obj.cancel_at_period_end || false,
+        environment: env,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "stripe_subscription_id" }
+    );
+
+    // Promote user_role to pro/ultra based on price
+    const role: "ultra" | "premium" | null = priceId?.startsWith("jaqtryp_ultra")
+      ? "ultra"
+      : priceId?.startsWith("jaqtryp_pro") ? "premium" : null;
+    if (role && (obj.status === "active" || obj.status === "trialing")) {
+      await supabaseAdmin.from("user_roles").upsert({ user_id: userId, role }, { onConflict: "user_id,role" });
+    }
+  } else if (type === "customer.subscription.deleted") {
+    await supabaseAdmin.from("subscriptions").update({
+      status: "canceled",
+      updated_at: new Date().toISOString(),
+    }).eq("stripe_subscription_id", obj.id).eq("environment", env);
+  }
+}
+

@@ -22,6 +22,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 import type { TKey } from "@/lib/i18n/translations";
+import { useAuth } from "@/hooks/useAuth";
+import { useSubscriptionCheckout } from "@/hooks/useSubscriptionCheckout";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -46,6 +48,9 @@ function Landing() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const [query, setQuery] = React.useState("");
+  const [billing, setBilling] = React.useState<"monthly" | "yearly">("monthly");
+  const { user } = useAuth();
+  const { openCheckout, checkoutDialog } = useSubscriptionCheckout();
 
   const onPlan = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,6 +60,19 @@ function Landing() {
       search: q ? { intent: q } : undefined,
     });
   };
+
+  const handleSubscribe = (planKey: "pro" | "ultra") => {
+    if (!user) {
+      navigate({ to: "/signup", search: { intent: `subscribe:${planKey}:${billing}` } as any });
+      return;
+    }
+    const priceId =
+      planKey === "pro"
+        ? billing === "yearly" ? "jaqtryp_pro_yearly" : "jaqtryp_pro_monthly"
+        : billing === "yearly" ? "jaqtryp_ultra_yearly" : "jaqtryp_ultra_monthly";
+    openCheckout({ priceId });
+  };
+
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -169,20 +187,42 @@ function Landing() {
               {t("plans.title")}
             </h2>
             <p className="mt-4 text-muted-foreground">{t("plans.subtitle")}</p>
+
+            {/* Billing toggle */}
+            <div className="mt-8 inline-flex items-center gap-1 rounded-full border border-border bg-card/60 p-1">
+              <button
+                type="button"
+                onClick={() => setBilling("monthly")}
+                className={`px-4 py-1.5 text-xs font-semibold rounded-full transition ${
+                  billing === "monthly" ? "bg-gradient-primary text-primary-foreground shadow-glow" : "text-muted-foreground"
+                }`}
+              >
+                Mensal
+              </button>
+              <button
+                type="button"
+                onClick={() => setBilling("yearly")}
+                className={`px-4 py-1.5 text-xs font-semibold rounded-full transition ${
+                  billing === "yearly" ? "bg-gradient-primary text-primary-foreground shadow-glow" : "text-muted-foreground"
+                }`}
+              >
+                Anual <span className="ml-1 rounded-full bg-primary/20 px-1.5 py-0.5 text-[10px]">−10%</span>
+              </button>
+            </div>
           </div>
           <div className="mt-14 grid gap-6 md:grid-cols-3">
             {[
               {
-                key: "free",
-                price: "$0",
-                period: "/month",
+                key: "free" as const,
+                monthly: { price: "$0", period: "/mês" },
+                yearly: { price: "$0", period: "/ano" },
                 features: ["3 roteiros IA / mês", "Tradutor texto", "Clima e câmbio"],
                 cta: "default",
               },
               {
-                key: "pro",
-                price: "$9",
-                period: "/month",
+                key: "pro" as const,
+                monthly: { price: "$9", period: "/mês" },
+                yearly: { price: "$97.20", period: "/ano" },
                 features: [
                   "Roteiros ilimitados",
                   "Tradutor voz + câmera",
@@ -192,9 +232,9 @@ function Landing() {
                 cta: "primary",
               },
               {
-                key: "ultra",
-                price: "$19",
-                period: "/month",
+                key: "ultra" as const,
+                monthly: { price: "$19", period: "/mês" },
+                yearly: { price: "$205.20", period: "/ano" },
                 features: [
                   "Tudo do Pro",
                   "Concierge IA prioritário",
@@ -205,6 +245,8 @@ function Landing() {
               },
             ].map((p) => {
               const isPro = p.cta === "primary";
+              const current = billing === "yearly" ? p.yearly : p.monthly;
+              const alt = billing === "yearly" ? p.monthly : p.yearly;
               return (
                 <div
                   key={p.key}
@@ -220,18 +262,20 @@ function Landing() {
                     </span>
                   )}
                   <h3 className="text-lg font-semibold capitalize">
-                    {t(`plans.${p.key as "free" | "pro" | "ultra"}` as TKey)}
+                    {t(`plans.${p.key}` as TKey)}
                   </h3>
                   <div className="mt-4 flex items-baseline gap-1">
-                    <span className="text-5xl font-bold">{p.price}</span>
-                    <span className="text-muted-foreground">{p.period}</span>
+                    <span className="text-5xl font-bold">{current.price}</span>
+                    <span className="text-muted-foreground">{current.period}</span>
                   </div>
                   {p.key !== "free" && (
                     <p className="mt-2 text-sm text-primary">
-                      {p.key === "pro" ? "ou $97.20/ano" : "ou $205.20/ano"}
-                      <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold">
-                        −10%
-                      </span>
+                      ou {alt.price}{alt.period}
+                      {billing === "monthly" && (
+                        <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-xs font-semibold">
+                          −10%
+                        </span>
+                      )}
                     </p>
                   )}
                   <ul className="mt-6 space-y-3 text-sm">
@@ -242,22 +286,35 @@ function Landing() {
                       </li>
                     ))}
                   </ul>
-                  <Button
-                    asChild
-                    className={`mt-8 w-full ${isPro ? "bg-gradient-primary shadow-glow" : ""}`}
-                    variant={isPro ? "default" : "outline"}
-                  >
-                    <Link to="/signup">{t("plans.cta")}</Link>
-                  </Button>
+                  {p.key === "free" ? (
+                    <Button
+                      asChild
+                      className="mt-8 w-full"
+                      variant="outline"
+                    >
+                      <Link to="/signup">{t("plans.cta")}</Link>
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => handleSubscribe(p.key as "pro" | "ultra")}
+                      className={`mt-8 w-full ${isPro ? "bg-gradient-primary shadow-glow" : ""}`}
+                      variant={isPro ? "default" : "outline"}
+                    >
+                      Assinar {p.key === "pro" ? "Pro" : "Ultra"}
+                    </Button>
+                  )}
                 </div>
               );
             })}
           </div>
           <p className="mt-8 text-center text-xs text-muted-foreground">
-            Assinaturas cobradas em dólar americano (USD). Reservas aéreas continuam em EURO (€).
+            Assinaturas cobradas em dólar americano (USD) via Stripe. Reservas aéreas continuam em EURO (€).
           </p>
         </div>
       </section>
+
+      {checkoutDialog}
+
 
       {/* CTA */}
       <section className="border-t border-border/50 py-24">
