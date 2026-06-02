@@ -68,8 +68,8 @@ function Landing() {
     }
     const priceId =
       planKey === "pro"
-        ? billing === "yearly" ? "jaqtryp_pro_yearly" : "jaqtryp_pro_monthly"
-        : billing === "yearly" ? "jaqtryp_ultra_yearly" : "jaqtryp_ultra_monthly";
+        ? billing === "yearly" ? "price_1TdXZNF2249riykhwvbz6EWl" : "price_1TdX3QF2249riykhAAlqarhW"
+        : billing === "yearly" ? "price_1TdXSYF2249riykhv8DaMEYx" : "price_1TdX4XF2249riykh3ja7kaHB";
     openCheckout({ priceId });
   };
 

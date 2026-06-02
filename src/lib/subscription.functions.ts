@@ -50,9 +50,10 @@ export const createSubscriptionCheckout = createServerFn({ method: "POST" })
       const email = claims?.email as string | undefined;
       const stripe = createStripeClient(data.environment);
 
-      const prices = await stripe.prices.list({ lookup_keys: [data.priceId] });
-      if (!prices.data.length) throw new Error(`Price '${data.priceId}' not found`);
-      const stripePrice = prices.data[0];
+      const stripePrice = data.priceId.startsWith("price_")
+        ? await stripe.prices.retrieve(data.priceId)
+        : (await stripe.prices.list({ lookup_keys: [data.priceId] })).data[0];
+      if (!stripePrice) throw new Error(`Price '${data.priceId}' not found`);
 
       const customerId = await resolveOrCreateCustomer(stripe, { email, userId });
 
