@@ -8,31 +8,12 @@ const getEnv = (key: string): string => {
 
 export type StripeEnv = 'sandbox' | 'live';
 
-const GATEWAY_STRIPE_BASE = 'https://connector-gateway.lovable.dev/stripe';
-
-export function getConnectionApiKey(env: StripeEnv): string {
-  return env === 'sandbox'
-    ? getEnv('STRIPE_SANDBOX_API_KEY')
-    : getEnv('STRIPE_LIVE_API_KEY');
-}
-
-export function createStripeClient(env: StripeEnv): Stripe {
-  const connectionApiKey = getConnectionApiKey(env);
-  const lovableApiKey = getEnv('LOVABLE_API_KEY');
-
-  return new Stripe(connectionApiKey, {
+// BYOK: usa a chave secreta do Stripe do próprio usuário diretamente,
+// sem passar pelo gateway gerenciado pela Lovable.
+export function createStripeClient(_env: StripeEnv): Stripe {
+  const secretKey = getEnv('STRIPE_BYOK_SECRET_KEY');
+  return new Stripe(secretKey, {
     apiVersion: '2026-03-25.dahlia' as any,
-    httpClient: Stripe.createFetchHttpClient(((input: any, init?: RequestInit) => {
-      const gatewayUrl = String(input).replace('https://api.stripe.com', GATEWAY_STRIPE_BASE);
-      return fetch(gatewayUrl, {
-        ...init,
-        headers: {
-          ...Object.fromEntries(new Headers(init?.headers).entries()),
-          'X-Connection-Api-Key': connectionApiKey,
-          'Lovable-API-Key': lovableApiKey,
-        },
-      });
-    }) as typeof fetch),
   });
 }
 
