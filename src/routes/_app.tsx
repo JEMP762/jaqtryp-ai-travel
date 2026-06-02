@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   LogOut,
   Globe2,
+  CreditCard,
 } from "lucide-react";
 import * as React from "react";
 import { supabase } from "@/integrations/supabase/client";
