@@ -235,10 +235,14 @@ async function handleSubscriptionEvent(event: any, env: "sandbox" | "live") {
       { onConflict: "stripe_subscription_id" }
     );
 
-    // Promote user_role to pro/ultra based on price
-    const role: "ultra" | "premium" | null = priceId?.startsWith("jaqtryp_ultra")
-      ? "ultra"
-      : priceId?.startsWith("jaqtryp_pro") ? "premium" : null;
+    // Promote user_role based on price
+    const ULTRA_PRICES = new Set(["price_1TdX4XF2249riykh3ja7kaHB", "price_1TdXSYF2249riykhv8DaMEYx"]);
+    const PRO_PRICES = new Set(["price_1TdX3QF2249riykhAAlqarhW", "price_1TdXZNF2249riykhwvbz6EWl"]);
+    const role: "ultra" | "premium" | null =
+      ULTRA_PRICES.has(priceId) ? "ultra" :
+      PRO_PRICES.has(priceId) ? "premium" :
+      priceId?.startsWith("jaqtryp_ultra") ? "ultra" :
+      priceId?.startsWith("jaqtryp_pro") ? "premium" : null;
     if (role && (obj.status === "active" || obj.status === "trialing")) {
       await supabaseAdmin.from("user_roles").upsert({ user_id: userId, role }, { onConflict: "user_id,role" });
     }
