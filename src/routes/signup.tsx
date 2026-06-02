@@ -64,8 +64,8 @@ function SignupPage() {
       setErrorMsg(msg);
       toast.error(msg);
     } else {
-      toast.success("Conta criada! Verifique seu e-mail para confirmar.");
-      nav({ to: "/login" });
+      toast.success("Conta criada com sucesso!");
+      nav({ to: "/dashboard" });
     }
   };
 
