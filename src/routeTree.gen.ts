@@ -25,6 +25,7 @@ import { Route as AppFlightsRouteImport } from './routes/_app.flights'
 import { Route as AppDealsRouteImport } from './routes/_app.deals'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppChatRouteImport } from './routes/_app.chat'
+import { Route as AppBillingRouteImport } from './routes/_app.billing'
 import { Route as AppAdminSettingsRouteImport } from './routes/_app.admin.settings'
 import { Route as AppAdminFinancialRouteImport } from './routes/_app.admin.financial'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api.public.payments.webhook'
@@ -108,6 +109,11 @@ const AppChatRoute = AppChatRouteImport.update({
   path: '/chat',
   getParentRoute: () => AppRoute,
 } as any)
+const AppBillingRoute = AppBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppAdminSettingsRoute = AppAdminSettingsRouteImport.update({
   id: '/admin/settings',
   path: '/admin/settings',
@@ -130,6 +136,7 @@ export interface FileRoutesByFullPath {
   '/cheap-flights': typeof CheapFlightsRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/billing': typeof AppBillingRoute
   '/chat': typeof AppChatRoute
   '/dashboard': typeof AppDashboardRoute
   '/deals': typeof AppDealsRoute
@@ -150,6 +157,7 @@ export interface FileRoutesByTo {
   '/cheap-flights': typeof CheapFlightsRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/billing': typeof AppBillingRoute
   '/chat': typeof AppChatRoute
   '/dashboard': typeof AppDashboardRoute
   '/deals': typeof AppDealsRoute
@@ -172,6 +180,7 @@ export interface FileRoutesById {
   '/cheap-flights': typeof CheapFlightsRoute
   '/login': typeof LoginRoute
   '/signup': typeof SignupRoute
+  '/_app/billing': typeof AppBillingRoute
   '/_app/chat': typeof AppChatRoute
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/deals': typeof AppDealsRoute
@@ -194,6 +203,7 @@ export interface FileRouteTypes {
     | '/cheap-flights'
     | '/login'
     | '/signup'
+    | '/billing'
     | '/chat'
     | '/dashboard'
     | '/deals'
@@ -214,6 +224,7 @@ export interface FileRouteTypes {
     | '/cheap-flights'
     | '/login'
     | '/signup'
+    | '/billing'
     | '/chat'
     | '/dashboard'
     | '/deals'
@@ -235,6 +246,7 @@ export interface FileRouteTypes {
     | '/cheap-flights'
     | '/login'
     | '/signup'
+    | '/_app/billing'
     | '/_app/chat'
     | '/_app/dashboard'
     | '/_app/deals'
@@ -377,6 +389,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppChatRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/billing': {
+      id: '/_app/billing'
+      path: '/billing'
+      fullPath: '/billing'
+      preLoaderRoute: typeof AppBillingRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/admin/settings': {
       id: '/_app/admin/settings'
       path: '/admin/settings'
@@ -402,6 +421,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppBillingRoute: typeof AppBillingRoute
   AppChatRoute: typeof AppChatRoute
   AppDashboardRoute: typeof AppDashboardRoute
   AppDealsRoute: typeof AppDealsRoute
@@ -415,6 +435,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppBillingRoute: AppBillingRoute,
   AppChatRoute: AppChatRoute,
   AppDashboardRoute: AppDashboardRoute,
   AppDealsRoute: AppDealsRoute,

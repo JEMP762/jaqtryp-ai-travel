@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   LogOut,
   Globe2,
+  CreditCard,
 } from "lucide-react";
 import * as React from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -58,6 +59,7 @@ function AppShell() {
     { to: "/stays", icon: BedDouble, label: "Hospedagem" },
     { to: "/deals", icon: Tag, label: "Promoções" },
     { to: "/shield", icon: ShieldCheck, label: "JAQ Shield" },
+    { to: "/billing", icon: CreditCard, label: "Minha Assinatura" },
   ] as const;
 
   const onSignOut = async () => {
