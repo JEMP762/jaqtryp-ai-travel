@@ -89,6 +89,12 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Jaqtryp AI — Smart travel powered by AI" },
+      { name: "description", content: "Jaqtryp AI is a futuristic SaaS travel super app with advanced AI for trip planning and real-time assistance." },
+      { property: "og:description", content: "Jaqtryp AI is a futuristic SaaS travel super app with advanced AI for trip planning and real-time assistance." },
+      { name: "twitter:description", content: "Jaqtryp AI is a futuristic SaaS travel super app with advanced AI for trip planning and real-time assistance." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/m8cwtqwuDjhZcMht2I21avsM2vY2/social-images/social-1780410271313-imagem-1780410253772.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/m8cwtqwuDjhZcMht2I21avsM2vY2/social-images/social-1780410271313-imagem-1780410253772.webp" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
