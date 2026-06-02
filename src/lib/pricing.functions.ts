@@ -69,12 +69,13 @@ const PreviewSchema = z.object({
 export const previewPricing = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => PreviewSchema.parse(input))
-  .handler(async ({ data, context }) => {
-    const { supabase } = context;
-    const { data: settings } = await supabase
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: settings } = await supabaseAdmin
       .from("commission_settings")
       .select("markup_type, markup_value, service_fee_type, service_fee_value, default_currency, upsells_enabled")
       .limit(1)
       .maybeSingle();
     return applyPricing(data.original_amount, data.currency, (settings as CommissionSettings) || DEFAULT_COMMISSION_SETTINGS);
   });
+
