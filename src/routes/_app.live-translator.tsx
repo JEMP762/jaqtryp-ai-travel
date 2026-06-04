@@ -484,6 +484,10 @@ function LiveTranslatorPage() {
       toast.error("Informe um destino");
       return;
     }
+    if (!online) {
+      toast.error("Sugestões de frases requerem internet");
+      return;
+    }
     setPhrasesLoading(true);
     setPhrases([]);
     try {
