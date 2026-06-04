@@ -21,6 +21,7 @@ import { Route as AppTranslatorRouteImport } from './routes/_app.translator'
 import { Route as AppStaysRouteImport } from './routes/_app.stays'
 import { Route as AppShieldRouteImport } from './routes/_app.shield'
 import { Route as AppPlannerRouteImport } from './routes/_app.planner'
+import { Route as AppLiveTranslatorRouteImport } from './routes/_app.live-translator'
 import { Route as AppFlightsRouteImport } from './routes/_app.flights'
 import { Route as AppDealsRouteImport } from './routes/_app.deals'
 import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
@@ -89,6 +90,11 @@ const AppPlannerRoute = AppPlannerRouteImport.update({
   path: '/planner',
   getParentRoute: () => AppRoute,
 } as any)
+const AppLiveTranslatorRoute = AppLiveTranslatorRouteImport.update({
+  id: '/live-translator',
+  path: '/live-translator',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppFlightsRoute = AppFlightsRouteImport.update({
   id: '/flights',
   path: '/flights',
@@ -141,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AppDashboardRoute
   '/deals': typeof AppDealsRoute
   '/flights': typeof AppFlightsRoute
+  '/live-translator': typeof AppLiveTranslatorRoute
   '/planner': typeof AppPlannerRoute
   '/shield': typeof AppShieldRoute
   '/stays': typeof AppStaysRoute
@@ -162,6 +169,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AppDashboardRoute
   '/deals': typeof AppDealsRoute
   '/flights': typeof AppFlightsRoute
+  '/live-translator': typeof AppLiveTranslatorRoute
   '/planner': typeof AppPlannerRoute
   '/shield': typeof AppShieldRoute
   '/stays': typeof AppStaysRoute
@@ -185,6 +193,7 @@ export interface FileRoutesById {
   '/_app/dashboard': typeof AppDashboardRoute
   '/_app/deals': typeof AppDealsRoute
   '/_app/flights': typeof AppFlightsRoute
+  '/_app/live-translator': typeof AppLiveTranslatorRoute
   '/_app/planner': typeof AppPlannerRoute
   '/_app/shield': typeof AppShieldRoute
   '/_app/stays': typeof AppStaysRoute
@@ -208,6 +217,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/deals'
     | '/flights'
+    | '/live-translator'
     | '/planner'
     | '/shield'
     | '/stays'
@@ -229,6 +239,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/deals'
     | '/flights'
+    | '/live-translator'
     | '/planner'
     | '/shield'
     | '/stays'
@@ -251,6 +262,7 @@ export interface FileRouteTypes {
     | '/_app/dashboard'
     | '/_app/deals'
     | '/_app/flights'
+    | '/_app/live-translator'
     | '/_app/planner'
     | '/_app/shield'
     | '/_app/stays'
@@ -361,6 +373,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppPlannerRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/live-translator': {
+      id: '/_app/live-translator'
+      path: '/live-translator'
+      fullPath: '/live-translator'
+      preLoaderRoute: typeof AppLiveTranslatorRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/flights': {
       id: '/_app/flights'
       path: '/flights'
@@ -426,6 +445,7 @@ interface AppRouteChildren {
   AppDashboardRoute: typeof AppDashboardRoute
   AppDealsRoute: typeof AppDealsRoute
   AppFlightsRoute: typeof AppFlightsRoute
+  AppLiveTranslatorRoute: typeof AppLiveTranslatorRoute
   AppPlannerRoute: typeof AppPlannerRoute
   AppShieldRoute: typeof AppShieldRoute
   AppStaysRoute: typeof AppStaysRoute
@@ -440,6 +460,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppDashboardRoute: AppDashboardRoute,
   AppDealsRoute: AppDealsRoute,
   AppFlightsRoute: AppFlightsRoute,
+  AppLiveTranslatorRoute: AppLiveTranslatorRoute,
   AppPlannerRoute: AppPlannerRoute,
   AppShieldRoute: AppShieldRoute,
   AppStaysRoute: AppStaysRoute,
@@ -464,13 +485,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

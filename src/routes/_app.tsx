@@ -18,7 +18,9 @@ import {
   Globe2,
   CreditCard,
   Menu,
+  Mic,
 } from "lucide-react";
+
 import * as React from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -63,7 +65,9 @@ function AppShell() {
     { to: "/planner", icon: Sparkles, label: t("dash.planner") },
     { to: "/chat", icon: MessageSquare, label: t("dash.chat") },
     { to: "/translator", icon: Languages, label: t("dash.translator") },
+    { to: "/live-translator", icon: Mic, label: "Live Translator" },
     { to: "/flights", icon: Plane, label: "Voos" },
+
     { to: "/stays", icon: BedDouble, label: "Hospedagem" },
     { to: "/deals", icon: Tag, label: "Promoções" },
     { to: "/shield", icon: ShieldCheck, label: "JAQ Shield" },

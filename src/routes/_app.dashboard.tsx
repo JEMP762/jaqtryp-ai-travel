@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ArrowRight, Sparkles, MessageSquare, Languages, Plane } from "lucide-react";
+import { ArrowRight, Sparkles, MessageSquare, Languages, Plane, Mic } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useI18n } from "@/lib/i18n/I18nProvider";
 
@@ -35,11 +35,18 @@ function DashboardHome() {
       desc: "Traduza texto em mais de 100 idiomas.",
     },
     {
+      to: "/live-translator",
+      icon: Mic,
+      title: "Live Translator",
+      desc: "Tradução simultânea por voz, texto e foto. Modo conversa, guia e cruzeiro.",
+    },
+    {
       to: "/flights",
       icon: Plane,
       title: "Voos",
       desc: "Busque voos e crie alertas inteligentes.",
     },
+
   ] as const;
 
   return (
