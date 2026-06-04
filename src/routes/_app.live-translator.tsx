@@ -436,6 +436,10 @@ function LiveTranslatorPage() {
   };
 
   const handleImage = async (file: File) => {
+    if (!online) {
+      toast.error("OCR de imagem requer internet");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = async () => {
       const dataUrl = reader.result as string;
