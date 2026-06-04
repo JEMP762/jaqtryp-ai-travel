@@ -72,6 +72,37 @@ type HistoryItem = {
 type Mode = "conversation" | "guide" | "cruise";
 
 const HISTORY_KEY = "jaq-live-translator-history-v1";
+const CACHE_KEY = "jaq-live-translator-cache-v1";
+
+type TranslationCache = Record<string, string>;
+const cacheKey = (f: string, t: string, text: string) =>
+  `${f}|${t}|${text.trim().toLowerCase()}`;
+
+function loadCache(): TranslationCache {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+function getCached(f: string, t: string, text: string): string | null {
+  return loadCache()[cacheKey(f, t, text)] ?? null;
+}
+function setCached(f: string, t: string, text: string, translated: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const c = loadCache();
+    c[cacheKey(f, t, text)] = translated;
+    const entries = Object.entries(c).slice(-500);
+    localStorage.setItem(CACHE_KEY, JSON.stringify(Object.fromEntries(entries)));
+  } catch {
+    /* quota */
+  }
+}
+function isOnline(): boolean {
+  return typeof navigator === "undefined" ? true : navigator.onLine;
+}
 
 function loadHistory(): HistoryItem[] {
   if (typeof window === "undefined") return [];
@@ -95,6 +126,13 @@ async function translateText(
   fromCode: string,
   toCode: string,
 ): Promise<string> {
+  const cached = getCached(fromCode, toCode, text);
+  if (cached) return cached;
+  if (!isOnline()) {
+    throw new Error(
+      "Offline: tradução não disponível para este texto. Conecte-se à internet.",
+    );
+  }
   const from = langLabel(fromCode);
   const to = langLabel(toCode);
   const system = `You are a professional simultaneous interpreter. Translate the user's text from ${from} to ${to}. Output ONLY the translation, with no quotes, no explanations, no transliteration. Preserve names, numbers and punctuation. Use natural, conversational tone suitable for spoken delivery.`;
@@ -105,7 +143,9 @@ async function translateText(
   });
   const data = await resp.json();
   if (!resp.ok) throw new Error(data.error || "Erro de tradução");
-  return (data.text as string).trim();
+  const out = (data.text as string).trim();
+  setCached(fromCode, toCode, text, out);
+  return out;
 }
 
 async function ocrAndTranslate(
@@ -236,6 +276,27 @@ function LiveTranslatorPage() {
   const [btDeviceB, setBtDeviceB] = React.useState<string | null>(null);
   const [btConnecting, setBtConnecting] = React.useState<Slot | null>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
+
+  // Online/offline status for limited offline mode
+  const [online, setOnline] = React.useState<boolean>(() =>
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
+  React.useEffect(() => {
+    const on = () => {
+      setOnline(true);
+      toast.success("Online — traduções completas disponíveis");
+    };
+    const off = () => {
+      setOnline(false);
+      toast.info("Offline — apenas voz local e traduções em cache");
+    };
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
 
   // Persist paired Bluetooth device names so the user sees them again
   const [btHistory, setBtHistory] = React.useState<string[]>([]);
@@ -375,6 +436,10 @@ function LiveTranslatorPage() {
   };
 
   const handleImage = async (file: File) => {
+    if (!online) {
+      toast.error("OCR de imagem requer internet");
+      return;
+    }
     const reader = new FileReader();
     reader.onload = async () => {
       const dataUrl = reader.result as string;
@@ -417,6 +482,10 @@ function LiveTranslatorPage() {
   const suggestPhrases = async () => {
     if (!destination.trim()) {
       toast.error("Informe um destino");
+      return;
+    }
+    if (!online) {
+      toast.error("Sugestões de frases requerem internet");
       return;
     }
     setPhrasesLoading(true);
@@ -495,6 +564,28 @@ function LiveTranslatorPage() {
             })}
             <Badge variant="outline" className="gap-1">
               <Glasses className="h-3 w-3" /> AR Glasses em breve
+            </Badge>
+            <Badge
+              variant={online ? "default" : "secondary"}
+              className={cn(
+                "gap-1",
+                online
+                  ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/20"
+                  : "bg-amber-500/15 text-amber-600 border-amber-500/30",
+              )}
+              title={
+                online
+                  ? "Online — tradução completa"
+                  : "Offline — voz local + cache; tradução nova exige internet"
+              }
+            >
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  online ? "bg-emerald-500" : "bg-amber-500",
+                )}
+              />
+              {online ? "Online" : "Offline (limitado)"}
             </Badge>
           </div>
 
