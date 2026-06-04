@@ -235,6 +235,22 @@ function LiveTranslatorPage() {
   const [btConnecting, setBtConnecting] = React.useState(false);
   const fileRef = React.useRef<HTMLInputElement>(null);
 
+  // Persist paired Bluetooth device names so the user sees them again
+  const [btHistory, setBtHistory] = React.useState<string[]>([]);
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem("jaq-bt-history-v1");
+      if (raw) setBtHistory(JSON.parse(raw));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const saveBtHistory = React.useCallback((names: string[]) => {
+    const uniq = Array.from(new Set(names));
+    setBtHistory(uniq);
+    localStorage.setItem("jaq-bt-history-v1", JSON.stringify(uniq.slice(0, 10)));
+  }, []);
+
   const pairBluetooth = React.useCallback(async () => {
     const nav = navigator as Navigator & { bluetooth?: any };
     if (!nav.bluetooth?.requestDevice) {
@@ -251,6 +267,7 @@ function LiveTranslatorPage() {
       });
       const name = device?.name || "Dispositivo Bluetooth";
       setBtDevice(name);
+      saveBtHistory([name, ...btHistory]);
       try {
         device.addEventListener?.("gattserverdisconnected", () => {
           setBtDevice(null);
@@ -267,7 +284,7 @@ function LiveTranslatorPage() {
     } finally {
       setBtConnecting(false);
     }
-  }, []);
+  }, [btHistory, saveBtHistory]);
 
 
   React.useEffect(() => {
@@ -434,36 +451,71 @@ function LiveTranslatorPage() {
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button
-            variant={btDevice ? "default" : "outline"}
-            size="sm"
-            onClick={pairBluetooth}
-            disabled={btConnecting}
-            className="gap-1"
-          >
-            {btConnecting ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Bluetooth className="h-3.5 w-3.5" />
-            )}
-            {btDevice ? `Conectado: ${btDevice}` : "Adicionar Bluetooth"}
-          </Button>
-          {btDevice && (
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
-              variant="ghost"
+              variant={btDevice ? "default" : "outline"}
               size="sm"
-              onClick={() => {
-                setBtDevice(null);
-                toast.info("Dispositivo desvinculado");
-              }}
+              onClick={pairBluetooth}
+              disabled={btConnecting}
+              className="gap-1"
             >
-              Desconectar
+              {btConnecting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Bluetooth className="h-3.5 w-3.5" />
+              )}
+              {btDevice ? `Conectado: ${btDevice}` : "Adicionar Bluetooth"}
             </Button>
+            {btDevice && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setBtDevice(null);
+                  toast.info("Dispositivo desvinculado");
+                }}
+              >
+                Desconectar
+              </Button>
+            )}
+            <Badge variant="outline" className="gap-1">
+              <Glasses className="h-3 w-3" /> AR Glasses em breve
+            </Badge>
+          </div>
+
+          {/* Connected device card */}
+          {btDevice && (
+            <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2">
+              <Bluetooth className="h-4 w-4 text-primary" />
+              <div className="flex-1">
+                <p className="text-xs font-medium text-primary">Dispositivo ativo</p>
+                <p className="text-sm font-semibold">{btDevice}</p>
+              </div>
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              </span>
+            </div>
           )}
-          <Badge variant="outline" className="gap-1">
-            <Glasses className="h-3 w-3" /> AR Glasses em breve
-          </Badge>
+
+          {/* Paired devices history */}
+          {btHistory.length > 0 && !btDevice && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs text-muted-foreground">Pareados:</span>
+              {btHistory.map((name) => (
+                <button
+                  key={name}
+                  onClick={pairBluetooth}
+                  className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-xs hover:border-primary/40 hover:bg-primary/10 transition-colors"
+                  title={`Reconectar ${name}`}
+                >
+                  <Bluetooth className="h-3 w-3 text-muted-foreground" />
+                  {name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
       </div>
