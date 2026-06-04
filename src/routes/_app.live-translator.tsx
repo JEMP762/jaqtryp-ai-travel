@@ -229,6 +229,7 @@ function LiveTranslatorPage() {
   const [history, setHistory] = React.useState<HistoryItem[]>([]);
   const [mode, setMode] = React.useState<Mode>("conversation");
   const [autoSpeak, setAutoSpeak] = React.useState(true);
+  const [autoTranslate, setAutoTranslate] = React.useState(true);
   const [ocrLoading, setOcrLoading] = React.useState(false);
   const fileRef = React.useRef<HTMLInputElement>(null);
 
@@ -294,6 +295,19 @@ function LiveTranslatorPage() {
 
   const srA = useSpeechRecognition(from, onFinalA);
   const srB = useSpeechRecognition(to, onFinalB);
+
+  // Debounced auto-translate while typing
+  React.useEffect(() => {
+    if (!autoTranslate) return;
+    const t = text.trim();
+    if (!t) return;
+    if (srA.listening || srB.listening) return;
+    const id = setTimeout(() => {
+      doTranslate(t, from, to, false);
+    }, 600);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text, autoTranslate, from, to]);
 
   const swap = () => {
     const f = from;
@@ -437,6 +451,20 @@ function LiveTranslatorPage() {
         </Button>
       </div>
 
+      <div className="mb-4 flex items-center justify-end">
+        <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={autoTranslate}
+            onChange={(e) => setAutoTranslate(e.target.checked)}
+            className="h-3.5 w-3.5 accent-primary"
+          />
+          Traduzir automaticamente enquanto digito
+        </label>
+      </div>
+
+
+
       <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)} className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="conversation" className="gap-1">
@@ -560,8 +588,19 @@ function LiveTranslatorPage() {
           <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={`Digite em ${langLabel(from)} ou use o microfone...`}
-            rows={5}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                doTranslate(text);
+              }
+            }}
+            placeholder={`Digite em ${langLabel(from)} e pressione Enter (Shift+Enter = nova linha)...`}
+            rows={3}
+            autoFocus
+            autoComplete="off"
+            autoCorrect="on"
+            spellCheck
+            className="text-base"
           />
           <div className="flex gap-2">
             <Button
