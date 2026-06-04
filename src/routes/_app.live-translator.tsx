@@ -565,6 +565,28 @@ function LiveTranslatorPage() {
             <Badge variant="outline" className="gap-1">
               <Glasses className="h-3 w-3" /> AR Glasses em breve
             </Badge>
+            <Badge
+              variant={online ? "default" : "secondary"}
+              className={cn(
+                "gap-1",
+                online
+                  ? "bg-emerald-500/15 text-emerald-600 border-emerald-500/30 hover:bg-emerald-500/20"
+                  : "bg-amber-500/15 text-amber-600 border-amber-500/30",
+              )}
+              title={
+                online
+                  ? "Online — tradução completa"
+                  : "Offline — voz local + cache; tradução nova exige internet"
+              }
+            >
+              <span
+                className={cn(
+                  "h-1.5 w-1.5 rounded-full",
+                  online ? "bg-emerald-500" : "bg-amber-500",
+                )}
+              />
+              {online ? "Online" : "Offline (limitado)"}
+            </Badge>
           </div>
 
           {/* Connected devices cards */}
