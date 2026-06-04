@@ -72,6 +72,37 @@ type HistoryItem = {
 type Mode = "conversation" | "guide" | "cruise";
 
 const HISTORY_KEY = "jaq-live-translator-history-v1";
+const CACHE_KEY = "jaq-live-translator-cache-v1";
+
+type TranslationCache = Record<string, string>;
+const cacheKey = (f: string, t: string, text: string) =>
+  `${f}|${t}|${text.trim().toLowerCase()}`;
+
+function loadCache(): TranslationCache {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(localStorage.getItem(CACHE_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+function getCached(f: string, t: string, text: string): string | null {
+  return loadCache()[cacheKey(f, t, text)] ?? null;
+}
+function setCached(f: string, t: string, text: string, translated: string) {
+  if (typeof window === "undefined") return;
+  try {
+    const c = loadCache();
+    c[cacheKey(f, t, text)] = translated;
+    const entries = Object.entries(c).slice(-500);
+    localStorage.setItem(CACHE_KEY, JSON.stringify(Object.fromEntries(entries)));
+  } catch {
+    /* quota */
+  }
+}
+function isOnline(): boolean {
+  return typeof navigator === "undefined" ? true : navigator.onLine;
+}
 
 function loadHistory(): HistoryItem[] {
   if (typeof window === "undefined") return [];
