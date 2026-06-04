@@ -15,6 +15,10 @@ import {
   ArrowRight,
   Check,
   Star,
+  Mic,
+  Bluetooth,
+  Camera,
+  Volume2,
 } from "lucide-react";
 import * as React from "react";
 import { Navbar } from "@/components/site/Navbar";
