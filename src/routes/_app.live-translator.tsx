@@ -231,8 +231,10 @@ function LiveTranslatorPage() {
   const [autoSpeak, setAutoSpeak] = React.useState(true);
   const [autoTranslate, setAutoTranslate] = React.useState(true);
   const [ocrLoading, setOcrLoading] = React.useState(false);
-  const [btDevice, setBtDevice] = React.useState<string | null>(null);
-  const [btConnecting, setBtConnecting] = React.useState(false);
+  type Slot = "A" | "B";
+  const [btDeviceA, setBtDeviceA] = React.useState<string | null>(null);
+  const [btDeviceB, setBtDeviceB] = React.useState<string | null>(null);
+  const [btConnecting, setBtConnecting] = React.useState<Slot | null>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
 
   // Persist paired Bluetooth device names so the user sees them again
@@ -246,43 +248,44 @@ function LiveTranslatorPage() {
     }
   }, []);
   const saveBtHistory = React.useCallback((names: string[]) => {
-    const uniq = Array.from(new Set(names));
+    const uniq = Array.from(new Set(names.filter(Boolean)));
     setBtHistory(uniq);
     localStorage.setItem("jaq-bt-history-v1", JSON.stringify(uniq.slice(0, 10)));
   }, []);
 
-  const pairBluetooth = React.useCallback(async () => {
+  const pairBluetooth = React.useCallback(async (slot: Slot) => {
     const nav = navigator as Navigator & { bluetooth?: any };
     if (!nav.bluetooth?.requestDevice) {
       toast.error(
-        "Seu navegador não suporta Web Bluetooth. Use Chrome/Edge no desktop ou Android, ou pareie o fone nas configurações do sistema — o áudio será enviado automaticamente para o dispositivo conectado.",
+        "Seu navegador não suporta Web Bluetooth. Use Chrome/Edge no desktop ou Android, ou pareie os fones nas configurações do sistema.",
       );
       return;
     }
     try {
-      setBtConnecting(true);
+      setBtConnecting(slot);
       const device = await nav.bluetooth.requestDevice({
         acceptAllDevices: true,
         optionalServices: ["battery_service"],
       });
-      const name = device?.name || "Dispositivo Bluetooth";
-      setBtDevice(name);
+      const name = device?.name || `Dispositivo ${slot}`;
+      const setter = slot === "A" ? setBtDeviceA : setBtDeviceB;
+      setter(name);
       saveBtHistory([name, ...btHistory]);
       try {
         device.addEventListener?.("gattserverdisconnected", () => {
-          setBtDevice(null);
-          toast.info("Bluetooth desconectado");
+          setter(null);
+          toast.info(`Bluetooth ${slot} desconectado`);
         });
         await device.gatt?.connect?.();
       } catch {
-        /* ok — pairing alone is enough for audio routing via OS */
+        /* OS handles audio routing */
       }
-      toast.success(`Conectado: ${name}`);
+      toast.success(`Pessoa ${slot} conectada: ${name}`);
     } catch (e) {
       const msg = (e as Error).message || "Pareamento cancelado";
       if (!/cancel/i.test(msg)) toast.error(msg);
     } finally {
-      setBtConnecting(false);
+      setBtConnecting(null);
     }
   }, [btHistory, saveBtHistory]);
 
