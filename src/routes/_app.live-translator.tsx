@@ -461,6 +461,9 @@ function LiveTranslatorPage() {
           />
           Traduzir automaticamente enquanto digito
         </label>
+      </div>
+
+
 
       <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)} className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">
