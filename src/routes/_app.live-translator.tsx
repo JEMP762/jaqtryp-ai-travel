@@ -451,6 +451,17 @@ function LiveTranslatorPage() {
         </Button>
       </div>
 
+      <div className="mb-4 flex items-center justify-end">
+        <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
+          <input
+            type="checkbox"
+            checked={autoTranslate}
+            onChange={(e) => setAutoTranslate(e.target.checked)}
+            className="h-3.5 w-3.5 accent-primary"
+          />
+          Traduzir automaticamente enquanto digito
+        </label>
+
       <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)} className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="conversation" className="gap-1">
