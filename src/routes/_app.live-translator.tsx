@@ -229,6 +229,7 @@ function LiveTranslatorPage() {
   const [history, setHistory] = React.useState<HistoryItem[]>([]);
   const [mode, setMode] = React.useState<Mode>("conversation");
   const [autoSpeak, setAutoSpeak] = React.useState(true);
+  const [autoTranslate, setAutoTranslate] = React.useState(true);
   const [ocrLoading, setOcrLoading] = React.useState(false);
   const fileRef = React.useRef<HTMLInputElement>(null);
 
