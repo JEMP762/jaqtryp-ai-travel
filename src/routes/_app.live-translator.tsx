@@ -296,6 +296,19 @@ function LiveTranslatorPage() {
   const srA = useSpeechRecognition(from, onFinalA);
   const srB = useSpeechRecognition(to, onFinalB);
 
+  // Debounced auto-translate while typing
+  React.useEffect(() => {
+    if (!autoTranslate) return;
+    const t = text.trim();
+    if (!t) return;
+    if (srA.listening || srB.listening) return;
+    const id = setTimeout(() => {
+      doTranslate(t, from, to, false);
+    }, 600);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text, autoTranslate, from, to]);
+
   const swap = () => {
     const f = from;
     setFrom(to);
