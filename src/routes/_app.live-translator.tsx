@@ -231,7 +231,44 @@ function LiveTranslatorPage() {
   const [autoSpeak, setAutoSpeak] = React.useState(true);
   const [autoTranslate, setAutoTranslate] = React.useState(true);
   const [ocrLoading, setOcrLoading] = React.useState(false);
+  const [btDevice, setBtDevice] = React.useState<string | null>(null);
+  const [btConnecting, setBtConnecting] = React.useState(false);
   const fileRef = React.useRef<HTMLInputElement>(null);
+
+  const pairBluetooth = React.useCallback(async () => {
+    const nav = navigator as Navigator & { bluetooth?: any };
+    if (!nav.bluetooth?.requestDevice) {
+      toast.error(
+        "Seu navegador não suporta Web Bluetooth. Use Chrome/Edge no desktop ou Android, ou pareie o fone nas configurações do sistema — o áudio será enviado automaticamente para o dispositivo conectado.",
+      );
+      return;
+    }
+    try {
+      setBtConnecting(true);
+      const device = await nav.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: ["battery_service"],
+      });
+      const name = device?.name || "Dispositivo Bluetooth";
+      setBtDevice(name);
+      try {
+        device.addEventListener?.("gattserverdisconnected", () => {
+          setBtDevice(null);
+          toast.info("Bluetooth desconectado");
+        });
+        await device.gatt?.connect?.();
+      } catch {
+        /* ok — pairing alone is enough for audio routing via OS */
+      }
+      toast.success(`Conectado: ${name}`);
+    } catch (e) {
+      const msg = (e as Error).message || "Pareamento cancelado";
+      if (!/cancel/i.test(msg)) toast.error(msg);
+    } finally {
+      setBtConnecting(false);
+    }
+  }, []);
+
 
   React.useEffect(() => {
     setHistory(loadHistory());
@@ -398,13 +435,37 @@ function LiveTranslatorPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="gap-1">
-            <Bluetooth className="h-3 w-3" /> Saída: dispositivo do sistema
-          </Badge>
+          <Button
+            variant={btDevice ? "default" : "outline"}
+            size="sm"
+            onClick={pairBluetooth}
+            disabled={btConnecting}
+            className="gap-1"
+          >
+            {btConnecting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Bluetooth className="h-3.5 w-3.5" />
+            )}
+            {btDevice ? `Conectado: ${btDevice}` : "Adicionar Bluetooth"}
+          </Button>
+          {btDevice && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setBtDevice(null);
+                toast.info("Dispositivo desvinculado");
+              }}
+            >
+              Desconectar
+            </Button>
+          )}
           <Badge variant="outline" className="gap-1">
             <Glasses className="h-3 w-3" /> AR Glasses em breve
           </Badge>
         </div>
+
       </div>
 
       {/* Language bar */}
