@@ -235,6 +235,22 @@ function LiveTranslatorPage() {
   const [btConnecting, setBtConnecting] = React.useState(false);
   const fileRef = React.useRef<HTMLInputElement>(null);
 
+  // Persist paired Bluetooth device names so the user sees them again
+  const [btHistory, setBtHistory] = React.useState<string[]>([]);
+  React.useEffect(() => {
+    try {
+      const raw = localStorage.getItem("jaq-bt-history-v1");
+      if (raw) setBtHistory(JSON.parse(raw));
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const saveBtHistory = React.useCallback((names: string[]) => {
+    const uniq = Array.from(new Set(names));
+    setBtHistory(uniq);
+    localStorage.setItem("jaq-bt-history-v1", JSON.stringify(uniq.slice(0, 10)));
+  }, []);
+
   const pairBluetooth = React.useCallback(async () => {
     const nav = navigator as Navigator & { bluetooth?: any };
     if (!nav.bluetooth?.requestDevice) {
@@ -251,6 +267,7 @@ function LiveTranslatorPage() {
       });
       const name = device?.name || "Dispositivo Bluetooth";
       setBtDevice(name);
+      saveBtHistory([name, ...btHistory]);
       try {
         device.addEventListener?.("gattserverdisconnected", () => {
           setBtDevice(null);
@@ -267,7 +284,7 @@ function LiveTranslatorPage() {
     } finally {
       setBtConnecting(false);
     }
-  }, []);
+  }, [btHistory, saveBtHistory]);
 
 
   React.useEffect(() => {
