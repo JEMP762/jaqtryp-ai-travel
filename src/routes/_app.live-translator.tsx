@@ -754,6 +754,15 @@ function LiveTranslatorPage() {
   );
 }
 
+type SpeakerCardProps = {
+  title: string;
+  listening: boolean;
+  interim: string;
+  onStart: () => void;
+  onStop: () => void;
+  accent?: boolean;
+};
+
 function SpeakerCard({
   title,
   listening,
@@ -761,14 +770,8 @@ function SpeakerCard({
   onStart,
   onStop,
   accent,
-}: {
-  title: string;
-  listening: boolean;
-  interim: string;
-  onStart: () => void;
-  onStop: () => void;
-  accent?: boolean;
-}) {
+}: SpeakerCardProps) {
+
   return (
     <div
       className={cn(
