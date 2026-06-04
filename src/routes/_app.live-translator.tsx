@@ -231,8 +231,10 @@ function LiveTranslatorPage() {
   const [autoSpeak, setAutoSpeak] = React.useState(true);
   const [autoTranslate, setAutoTranslate] = React.useState(true);
   const [ocrLoading, setOcrLoading] = React.useState(false);
-  const [btDevice, setBtDevice] = React.useState<string | null>(null);
-  const [btConnecting, setBtConnecting] = React.useState(false);
+  type Slot = "A" | "B";
+  const [btDeviceA, setBtDeviceA] = React.useState<string | null>(null);
+  const [btDeviceB, setBtDeviceB] = React.useState<string | null>(null);
+  const [btConnecting, setBtConnecting] = React.useState<Slot | null>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
 
   // Persist paired Bluetooth device names so the user sees them again
@@ -246,43 +248,44 @@ function LiveTranslatorPage() {
     }
   }, []);
   const saveBtHistory = React.useCallback((names: string[]) => {
-    const uniq = Array.from(new Set(names));
+    const uniq = Array.from(new Set(names.filter(Boolean)));
     setBtHistory(uniq);
     localStorage.setItem("jaq-bt-history-v1", JSON.stringify(uniq.slice(0, 10)));
   }, []);
 
-  const pairBluetooth = React.useCallback(async () => {
+  const pairBluetooth = React.useCallback(async (slot: Slot) => {
     const nav = navigator as Navigator & { bluetooth?: any };
     if (!nav.bluetooth?.requestDevice) {
       toast.error(
-        "Seu navegador não suporta Web Bluetooth. Use Chrome/Edge no desktop ou Android, ou pareie o fone nas configurações do sistema — o áudio será enviado automaticamente para o dispositivo conectado.",
+        "Seu navegador não suporta Web Bluetooth. Use Chrome/Edge no desktop ou Android, ou pareie os fones nas configurações do sistema.",
       );
       return;
     }
     try {
-      setBtConnecting(true);
+      setBtConnecting(slot);
       const device = await nav.bluetooth.requestDevice({
         acceptAllDevices: true,
         optionalServices: ["battery_service"],
       });
-      const name = device?.name || "Dispositivo Bluetooth";
-      setBtDevice(name);
+      const name = device?.name || `Dispositivo ${slot}`;
+      const setter = slot === "A" ? setBtDeviceA : setBtDeviceB;
+      setter(name);
       saveBtHistory([name, ...btHistory]);
       try {
         device.addEventListener?.("gattserverdisconnected", () => {
-          setBtDevice(null);
-          toast.info("Bluetooth desconectado");
+          setter(null);
+          toast.info(`Bluetooth ${slot} desconectado`);
         });
         await device.gatt?.connect?.();
       } catch {
-        /* ok — pairing alone is enough for audio routing via OS */
+        /* OS handles audio routing */
       }
-      toast.success(`Conectado: ${name}`);
+      toast.success(`Pessoa ${slot} conectada: ${name}`);
     } catch (e) {
       const msg = (e as Error).message || "Pareamento cancelado";
       if (!/cancel/i.test(msg)) toast.error(msg);
     } finally {
-      setBtConnecting(false);
+      setBtConnecting(null);
     }
   }, [btHistory, saveBtHistory]);
 
@@ -453,66 +456,97 @@ function LiveTranslatorPage() {
         </div>
         <div className="flex flex-col gap-2">
           <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant={btDevice ? "default" : "outline"}
-              size="sm"
-              onClick={pairBluetooth}
-              disabled={btConnecting}
-              className="gap-1"
-            >
-              {btConnecting ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Bluetooth className="h-3.5 w-3.5" />
-              )}
-              {btDevice ? `Conectado: ${btDevice}` : "Adicionar Bluetooth"}
-            </Button>
-            {btDevice && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  setBtDevice(null);
-                  toast.info("Dispositivo desvinculado");
-                }}
-              >
-                Desconectar
-              </Button>
-            )}
+            {(["A", "B"] as const).map((slot) => {
+              const dev = slot === "A" ? btDeviceA : btDeviceB;
+              const setDev = slot === "A" ? setBtDeviceA : setBtDeviceB;
+              const lang = slot === "A" ? from : to;
+              return (
+                <div key={slot} className="flex items-center gap-1">
+                  <Button
+                    variant={dev ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => pairBluetooth(slot)}
+                    disabled={btConnecting === slot}
+                    className="gap-1"
+                  >
+                    {btConnecting === slot ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Bluetooth className="h-3.5 w-3.5" />
+                    )}
+                    {dev
+                      ? `Pessoa ${slot}: ${dev}`
+                      : `Parear Pessoa ${slot} (${langLabel(lang)})`}
+                  </Button>
+                  {dev && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setDev(null);
+                        toast.info(`Pessoa ${slot} desvinculada`);
+                      }}
+                    >
+                      ✕
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
             <Badge variant="outline" className="gap-1">
               <Glasses className="h-3 w-3" /> AR Glasses em breve
             </Badge>
           </div>
 
-          {/* Connected device card */}
-          {btDevice && (
-            <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2">
-              <Bluetooth className="h-4 w-4 text-primary" />
-              <div className="flex-1">
-                <p className="text-xs font-medium text-primary">Dispositivo ativo</p>
-                <p className="text-sm font-semibold">{btDevice}</p>
-              </div>
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
-              </span>
+          {/* Connected devices cards */}
+          {(btDeviceA || btDeviceB) && (
+            <div className="grid gap-2 sm:grid-cols-2">
+              {(["A", "B"] as const).map((slot) => {
+                const dev = slot === "A" ? btDeviceA : btDeviceB;
+                if (!dev) return null;
+                const lang = slot === "A" ? from : to;
+                return (
+                  <div
+                    key={slot}
+                    className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2"
+                  >
+                    <Bluetooth className="h-4 w-4 text-primary" />
+                    <div className="flex-1">
+                      <p className="text-xs font-medium text-primary">
+                        Pessoa {slot} · {langLabel(lang)}
+                      </p>
+                      <p className="text-sm font-semibold">{dev}</p>
+                    </div>
+                    <span className="relative flex h-2.5 w-2.5">
+                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
+                    </span>
+                  </div>
+                );
+              })}
             </div>
           )}
 
+          {(btDeviceA || btDeviceB) && (
+            <p className="text-[11px] text-muted-foreground">
+              Dica: defina cada fone como saída de áudio nas configurações do
+              sistema para que cada pessoa ouça apenas a tradução no seu idioma.
+            </p>
+          )}
+
           {/* Paired devices history */}
-          {btHistory.length > 0 && !btDevice && (
+          {btHistory.length > 0 && !btDeviceA && !btDeviceB && (
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs text-muted-foreground">Pareados:</span>
               {btHistory.map((name) => (
-                <button
+                <span
                   key={name}
-                  onClick={pairBluetooth}
-                  className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-xs hover:border-primary/40 hover:bg-primary/10 transition-colors"
-                  title={`Reconectar ${name}`}
+                  className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-xs text-muted-foreground"
+                  title={name}
                 >
-                  <Bluetooth className="h-3 w-3 text-muted-foreground" />
+                  <Bluetooth className="h-3 w-3" />
                   {name}
-                </button>
+                </span>
               ))}
             </div>
           )}
