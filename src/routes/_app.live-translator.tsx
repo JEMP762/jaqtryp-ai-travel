@@ -277,6 +277,27 @@ function LiveTranslatorPage() {
   const [btConnecting, setBtConnecting] = React.useState<Slot | null>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
 
+  // Online/offline status for limited offline mode
+  const [online, setOnline] = React.useState<boolean>(() =>
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
+  React.useEffect(() => {
+    const on = () => {
+      setOnline(true);
+      toast.success("Online — traduções completas disponíveis");
+    };
+    const off = () => {
+      setOnline(false);
+      toast.info("Offline — apenas voz local e traduções em cache");
+    };
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
+
   // Persist paired Bluetooth device names so the user sees them again
   const [btHistory, setBtHistory] = React.useState<string[]>([]);
   React.useEffect(() => {
