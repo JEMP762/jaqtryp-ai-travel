@@ -560,8 +560,19 @@ function LiveTranslatorPage() {
           <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder={`Digite em ${langLabel(from)} ou use o microfone...`}
-            rows={5}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                doTranslate(text);
+              }
+            }}
+            placeholder={`Digite em ${langLabel(from)} e pressione Enter (Shift+Enter = nova linha)...`}
+            rows={3}
+            autoFocus
+            autoComplete="off"
+            autoCorrect="on"
+            spellCheck
+            className="text-base"
           />
           <div className="flex gap-2">
             <Button
