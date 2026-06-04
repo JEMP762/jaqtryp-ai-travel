@@ -126,6 +126,13 @@ async function translateText(
   fromCode: string,
   toCode: string,
 ): Promise<string> {
+  const cached = getCached(fromCode, toCode, text);
+  if (cached) return cached;
+  if (!isOnline()) {
+    throw new Error(
+      "Offline: tradução não disponível para este texto. Conecte-se à internet.",
+    );
+  }
   const from = langLabel(fromCode);
   const to = langLabel(toCode);
   const system = `You are a professional simultaneous interpreter. Translate the user's text from ${from} to ${to}. Output ONLY the translation, with no quotes, no explanations, no transliteration. Preserve names, numbers and punctuation. Use natural, conversational tone suitable for spoken delivery.`;
@@ -136,7 +143,9 @@ async function translateText(
   });
   const data = await resp.json();
   if (!resp.ok) throw new Error(data.error || "Erro de tradução");
-  return (data.text as string).trim();
+  const out = (data.text as string).trim();
+  setCached(fromCode, toCode, text, out);
+  return out;
 }
 
 async function ocrAndTranslate(
