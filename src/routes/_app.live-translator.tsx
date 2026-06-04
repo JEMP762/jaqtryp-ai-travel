@@ -435,13 +435,37 @@ function LiveTranslatorPage() {
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge variant="outline" className="gap-1">
-            <Bluetooth className="h-3 w-3" /> Saída: dispositivo do sistema
-          </Badge>
+          <Button
+            variant={btDevice ? "default" : "outline"}
+            size="sm"
+            onClick={pairBluetooth}
+            disabled={btConnecting}
+            className="gap-1"
+          >
+            {btConnecting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Bluetooth className="h-3.5 w-3.5" />
+            )}
+            {btDevice ? `Conectado: ${btDevice}` : "Adicionar Bluetooth"}
+          </Button>
+          {btDevice && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setBtDevice(null);
+                toast.info("Dispositivo desvinculado");
+              }}
+            >
+              Desconectar
+            </Button>
+          )}
           <Badge variant="outline" className="gap-1">
             <Glasses className="h-3 w-3" /> AR Glasses em breve
           </Badge>
         </div>
+
       </div>
 
       {/* Language bar */}
