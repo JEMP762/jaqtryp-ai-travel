@@ -15,6 +15,10 @@ import {
   ArrowRight,
   Check,
   Star,
+  Mic,
+  Bluetooth,
+  Camera,
+  Volume2,
 } from "lucide-react";
 import * as React from "react";
 import { Navbar } from "@/components/site/Navbar";
@@ -150,6 +154,84 @@ function Landing() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* LIVE TRANSLATOR HIGHLIGHT */}
+      <section id="live-translator" className="border-t border-border/50 py-24">
+        <div className="mx-auto max-w-6xl px-4 md:px-8">
+          <div className="grid items-center gap-10 rounded-3xl border border-primary/30 bg-gradient-card p-8 shadow-glow md:p-12 lg:grid-cols-2">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                <Sparkles className="h-3.5 w-3.5" /> Novo
+              </div>
+              <h2 className="mt-4 text-balance text-4xl font-bold tracking-tight md:text-5xl">
+                Live Translator — <span className="text-gradient">tradução em tempo real</span>
+              </h2>
+              <p className="mt-4 text-muted-foreground">
+                Converse em qualquer idioma com tradução simultânea por voz, texto e foto.
+                Pareie dois fones Bluetooth e fale naturalmente — cada pessoa ouve no seu próprio idioma.
+              </p>
+              <ul className="mt-6 grid gap-3 text-sm sm:grid-cols-2">
+                {[
+                  { icon: Mic, label: "Voz ao vivo (STT + TTS)" },
+                  { icon: Bluetooth, label: "2 dispositivos Bluetooth" },
+                  { icon: Camera, label: "OCR de fotos e cardápios" },
+                  { icon: Volume2, label: "Modo offline limitado" },
+                ].map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <li key={item.label} className="flex items-center gap-2">
+                      <span className="grid h-8 w-8 place-items-center rounded-lg bg-primary/10 text-primary">
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      {item.label}
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Button asChild size="lg" className="bg-gradient-primary shadow-glow">
+                  <Link to="/signup">
+                    Experimentar agora <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </Button>
+                <Button asChild size="lg" variant="outline">
+                  <a href="#plans">Ver planos</a>
+                </Button>
+              </div>
+            </div>
+            <div className="relative">
+              <div className="absolute -inset-4 -z-10 rounded-3xl bg-gradient-primary opacity-20 blur-3xl" />
+              <div className="rounded-2xl border border-border bg-card/80 p-6 backdrop-blur">
+                <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
+                    ao vivo
+                  </span>
+                  <span>PT ⇄ EN</span>
+                </div>
+                <div className="mt-4 space-y-3">
+                  <div className="rounded-xl border border-border bg-background/60 p-3">
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Pessoa A · PT</div>
+                    <div className="mt-1 text-sm">Onde fica a estação de metrô mais próxima?</div>
+                  </div>
+                  <div className="rounded-xl border border-primary/30 bg-primary/5 p-3">
+                    <div className="text-[10px] uppercase tracking-wide text-primary">Pessoa B · EN</div>
+                    <div className="mt-1 text-sm">Where is the nearest subway station?</div>
+                  </div>
+                  <div className="rounded-xl border border-primary/30 bg-primary/5 p-3">
+                    <div className="text-[10px] uppercase tracking-wide text-primary">Pessoa B · EN</div>
+                    <div className="mt-1 text-sm">Two blocks down on your left.</div>
+                  </div>
+                  <div className="rounded-xl border border-border bg-background/60 p-3">
+                    <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Pessoa A · PT</div>
+                    <div className="mt-1 text-sm">Duas quadras adiante à sua esquerda.</div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
