@@ -263,7 +263,7 @@ function prepareUtterance(text: string, lang: string, options: SpeakOptions = {}
   u.rate = 1;
   u.volume = 1;
   u.pitch = 1;
-  const voice = options.useVoice === false || !_voicesLoaded ? null : pickVoice(synth.getVoices(), lang);
+  const voice = options.useVoice === true && _voicesLoaded ? pickVoice(synth.getVoices(), lang) : null;
   if (voice) u.voice = voice;
   u.onstart = () => startKeepAlive();
   u.onend = () => stopKeepAlive();
@@ -272,7 +272,7 @@ function prepareUtterance(text: string, lang: string, options: SpeakOptions = {}
     const err = (e as SpeechSynthesisErrorEvent).error;
     if (err === "interrupted" || err === "canceled") return;
     console.warn("speechSynthesis error:", err);
-    if (err === "synthesis-failed" && options.useVoice !== false && (options.retries ?? 1) > 0) {
+    if (err === "synthesis-failed" && options.useVoice === true && (options.retries ?? 1) > 0) {
       window.setTimeout(() => speak(text, lang, null, { retries: 0, useVoice: false }), 140);
       return;
     }
@@ -295,9 +295,9 @@ function speak(
   }
   if (!text?.trim()) return;
   const synth = window.speechSynthesis;
-  const canUsePrepared = !!prepared && prepared.text.trim() === text.trim();
-  const u = canUsePrepared ? prepared : prepareUtterance(text, lang, { retries: 1, ...options });
+  const u = prepared || prepareUtterance(text, lang, { retries: 1, useVoice: false, ...options });
   if (!u) return;
+  u.text = text;
   u.lang = lang;
   const queued = synth.speaking || synth.pending;
   if (queued) synth.cancel();
@@ -353,8 +353,15 @@ function useSpeechRecognition(lang: string, onFinal: (text: string) => void) {
       let intr = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const r = e.results[i];
-        if (r.isFinal) onFinal(r[0].transcript.trim());
-        else intr += r[0].transcript;
+        if (r.isFinal) {
+          const finalText = r[0].transcript.trim();
+          rec.stop();
+          setListening(false);
+          setInterim("");
+          onFinal(finalText);
+          return;
+        }
+        intr += r[0].transcript;
       }
       setInterim(intr);
     };
@@ -437,7 +444,7 @@ function LiveTranslatorPage() {
     localStorage.setItem("jaq-bt-history-v1", JSON.stringify(uniq.slice(0, 10)));
   }, []);
 
-  const useSystemBluetooth = React.useCallback((slot: Slot) => {
+  const setupSystemBluetooth = React.useCallback((slot: Slot) => {
     try {
       setBtConnecting(slot);
       const lang = slot === "A" ? from : to;
@@ -661,7 +668,7 @@ function LiveTranslatorPage() {
                   <Button
                     variant={dev ? "default" : "outline"}
                     size="sm"
-                    onClick={() => useSystemBluetooth(slot)}
+                    onClick={() => setupSystemBluetooth(slot)}
                     disabled={btConnecting === slot}
                     className="gap-1"
                   >
@@ -860,7 +867,7 @@ function LiveTranslatorPage() {
               interim={srA.interim}
               onStart={() => {
                 srB.stop();
-                nextSpeakRef.current = null;
+                nextSpeakRef.current = prepareUtterance("", to, { useVoice: false });
                 srA.start();
               }}
               onStop={srA.stop}
@@ -871,7 +878,7 @@ function LiveTranslatorPage() {
               interim={srB.interim}
               onStart={() => {
                 srA.stop();
-                nextSpeakRef.current = null;
+                nextSpeakRef.current = prepareUtterance("", from, { useVoice: false });
                 srB.start();
               }}
               onStop={srB.stop}
@@ -892,7 +899,7 @@ function LiveTranslatorPage() {
               listening={srA.listening}
               interim={srA.interim}
               onStart={() => {
-                nextSpeakRef.current = null;
+                nextSpeakRef.current = prepareUtterance("", to, { useVoice: false });
                 srA.start();
               }}
               onStop={srA.stop}
@@ -920,7 +927,8 @@ function LiveTranslatorPage() {
                   size="sm"
                   onClick={() => {
                     setText(q);
-                    doTranslate(q, from, to, autoSpeak);
+                    const prepared = autoSpeak ? prepareUtterance("", to, { useVoice: false }) : null;
+                    doTranslate(q, from, to, autoSpeak, prepared);
                   }}
                 >
                   {q}
@@ -970,7 +978,8 @@ function LiveTranslatorPage() {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                doTranslate(text, from, to, autoSpeak);
+                const prepared = autoSpeak ? prepareUtterance("", to, { useVoice: false }) : null;
+                doTranslate(text, from, to, autoSpeak, prepared);
               }
             }}
             placeholder={`Digite em ${langLabel(from)} e pressione Enter (Shift+Enter = nova linha)...`}
@@ -988,7 +997,7 @@ function LiveTranslatorPage() {
                 srA.listening
                   ? srA.stop
                   : () => {
-                      nextSpeakRef.current = null;
+                      nextSpeakRef.current = prepareUtterance("", to, { useVoice: false });
                       srA.start();
                     }
               }
@@ -1005,7 +1014,10 @@ function LiveTranslatorPage() {
               )}
             </Button>
             <Button
-              onClick={() => doTranslate(text, from, to, autoSpeak)}
+              onClick={() => {
+                const prepared = autoSpeak ? prepareUtterance("", to, { useVoice: false }) : null;
+                doTranslate(text, from, to, autoSpeak, prepared);
+              }}
               disabled={loading || !text.trim()}
               className="flex-1 bg-gradient-primary shadow-glow"
             >
