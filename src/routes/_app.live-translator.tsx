@@ -177,16 +177,106 @@ async function ocrAndTranslate(
   }
 }
 
-function speak(text: string, lang: string) {
+// Cache loaded voices once
+let _voicesLoaded = false;
+function ensureVoicesLoaded(): Promise<SpeechSynthesisVoice[]> {
+  return new Promise((resolve) => {
+    if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+      resolve([]);
+      return;
+    }
+    const synth = window.speechSynthesis;
+    const existing = synth.getVoices();
+    if (existing.length > 0) {
+      _voicesLoaded = true;
+      resolve(existing);
+      return;
+    }
+    const handler = () => {
+      _voicesLoaded = true;
+      synth.removeEventListener("voiceschanged", handler);
+      resolve(synth.getVoices());
+    };
+    synth.addEventListener("voiceschanged", handler);
+    // Safety timeout
+    setTimeout(() => {
+      synth.removeEventListener("voiceschanged", handler);
+      resolve(synth.getVoices());
+    }, 1500);
+  });
+}
+
+function pickVoice(voices: SpeechSynthesisVoice[], lang: string): SpeechSynthesisVoice | null {
+  if (!voices.length) return null;
+  const exact = voices.find((v) => v.lang?.toLowerCase() === lang.toLowerCase());
+  if (exact) return exact;
+  const short = lang.split("-")[0].toLowerCase();
+  const partial = voices.find((v) => v.lang?.toLowerCase().startsWith(short));
+  return partial || null;
+}
+
+// Chrome bug workaround: speechSynthesis pauses itself after ~15s of inactivity
+// or stops mid-utterance. Keep it alive by resuming periodically while speaking.
+let _keepAliveTimer: number | null = null;
+function startKeepAlive() {
+  if (typeof window === "undefined") return;
+  if (_keepAliveTimer !== null) return;
+  _keepAliveTimer = window.setInterval(() => {
+    const s = window.speechSynthesis;
+    if (s.speaking && !s.paused) {
+      // Touch resume to prevent Chrome from silently pausing the queue
+      s.pause();
+      s.resume();
+    }
+  }, 8000);
+}
+function stopKeepAlive() {
+  if (_keepAliveTimer !== null) {
+    clearInterval(_keepAliveTimer);
+    _keepAliveTimer = null;
+  }
+}
+
+async function speak(text: string, lang: string) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) {
     toast.error("Seu navegador não suporta síntese de voz.");
     return;
   }
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = lang;
-  u.rate = 1;
-  window.speechSynthesis.speak(u);
+  if (!text?.trim()) return;
+  const synth = window.speechSynthesis;
+  try {
+    // Make sure voices are ready (otherwise speak() may silently no-op on first run)
+    if (!_voicesLoaded) await ensureVoicesLoaded();
+
+    // Reset any stuck queue. Wait a tick — calling speak() immediately after
+    // cancel() on Chrome can be ignored.
+    synth.cancel();
+    await new Promise((r) => setTimeout(r, 80));
+
+    // If for some reason it ended paused, resume.
+    if (synth.paused) synth.resume();
+
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = lang;
+    u.rate = 1;
+    u.volume = 1;
+    u.pitch = 1;
+    const voice = pickVoice(synth.getVoices(), lang);
+    if (voice) u.voice = voice;
+    u.onstart = () => startKeepAlive();
+    u.onend = () => stopKeepAlive();
+    u.onerror = (e) => {
+      stopKeepAlive();
+      const err = (e as SpeechSynthesisErrorEvent).error;
+      if (err && err !== "interrupted" && err !== "canceled") {
+        console.warn("speechSynthesis error:", err);
+        toast.error(`Áudio: ${err}`);
+      }
+    };
+    synth.speak(u);
+  } catch (err) {
+    console.warn("speak() failed:", err);
+  }
 }
 
 // Minimal SpeechRecognition typing
@@ -353,7 +443,10 @@ function LiveTranslatorPage() {
 
   React.useEffect(() => {
     setHistory(loadHistory());
+    // Pre-load TTS voices so the first speak() call is not silent
+    ensureVoicesLoaded();
   }, []);
+
 
   const persist = (next: HistoryItem[]) => {
     setHistory(next);
