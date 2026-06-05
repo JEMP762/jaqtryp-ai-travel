@@ -414,11 +414,44 @@ function LiveTranslatorPage() {
     }
     try {
       setBtConnecting(slot);
+      // Request a broad set of optional services so the OS picker reveals
+      // device names (audio headsets, wearables, beacons, etc.).
       const device = await nav.bluetooth.requestDevice({
         acceptAllDevices: true,
-        optionalServices: ["battery_service"],
+        optionalServices: [
+          "battery_service",
+          "device_information",
+          "generic_access",
+          "generic_attribute",
+          "human_interface_device",
+          0x1108, // Headset (Classic profile UUID)
+          0x110a, // A2DP Source
+          0x110b, // A2DP Sink
+          0x111e, // Handsfree
+          0x1812, // HID over GATT
+        ],
       });
-      const name = device?.name || `Dispositivo ${slot}`;
+      // Prefer the broadcast name. If absent (common with audio devices that
+      // hide the name), fall back to the stable device id, then ask the user
+      // to label it so the slot card shows something meaningful.
+      let name: string = (device?.name as string) || "";
+      if (!name) {
+        const shortId =
+          typeof device?.id === "string" && device.id.length > 0
+            ? device.id.slice(0, 6).toUpperCase()
+            : "";
+        const suggested = shortId
+          ? `Fone ${slot} (${shortId})`
+          : `Fone ${slot}`;
+        const typed =
+          typeof window !== "undefined"
+            ? window.prompt(
+                "Não foi possível ler o nome do dispositivo. Dê um nome para identificá-lo:",
+                suggested,
+              )
+            : null;
+        name = (typed && typed.trim()) || suggested;
+      }
       const setter = slot === "A" ? setBtDeviceA : setBtDeviceB;
       setter(name);
       saveBtHistory([name, ...btHistory]);
