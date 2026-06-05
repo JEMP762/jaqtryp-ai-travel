@@ -630,7 +630,7 @@ function LiveTranslatorPage() {
                   <Button
                     variant={dev ? "default" : "outline"}
                     size="sm"
-                    onClick={() => pairBluetooth(slot)}
+                    onClick={() => useSystemBluetooth(slot)}
                     disabled={btConnecting === slot}
                     className="gap-1"
                   >
@@ -641,7 +641,7 @@ function LiveTranslatorPage() {
                     )}
                     {dev
                       ? `Pessoa ${slot}: ${dev}`
-                      : `Parear Pessoa ${slot} (${langLabel(lang)})`}
+                      : `Usar Bluetooth ${slot} (${langLabel(lang)})`}
                   </Button>
                   {dev && (
                     <Button
@@ -716,8 +716,8 @@ function LiveTranslatorPage() {
 
           {(btDeviceA || btDeviceB) && (
             <p className="text-[11px] text-muted-foreground">
-              Dica: defina cada fone como saída de áudio nas configurações do
-              sistema para que cada pessoa ouça apenas a tradução no seu idioma.
+              Conecte o fone direto no Bluetooth do smartphone; o app reproduz
+              pela saída de áudio ativa do aparelho.
             </p>
           )}
 
