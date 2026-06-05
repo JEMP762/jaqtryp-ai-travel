@@ -248,23 +248,61 @@ function stopKeepAlive() {
   }
 }
 
+// Audio unlock: Chrome/Android requires a user gesture before TTS works.
+let _audioUnlocked = false;
+function unlockAudio() {
+  if (_audioUnlocked) return;
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  try {
+    const synth = window.speechSynthesis;
+    // Silent priming utterance inside the user gesture
+    const u = new SpeechSynthesisUtterance(" ");
+    u.volume = 0;
+    u.rate = 1;
+    synth.cancel();
+    synth.speak(u);
+    _audioUnlocked = true;
+  } catch {
+    /* ignore */
+  }
+}
+
 type SpeakOptions = {
-  retries?: number;
   useVoice?: boolean;
+  _retry?: boolean;
 };
 
-function prepareUtterance(text: string, lang: string, options: SpeakOptions = {}) {
+// Kept for API compatibility with existing call sites — returns null,
+// the new speak() builds a fresh utterance each time (reusing empty ones
+// triggers `synthesis-failed` on Chrome Android).
+function prepareUtterance(_text: string, _lang: string, _options: SpeakOptions = {}) {
+  return null as SpeechSynthesisUtterance | null;
+}
+
+function speak(
+  text: string,
+  lang: string,
+  _prepared?: SpeechSynthesisUtterance | null,
+  options: SpeakOptions = {},
+) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-    return null;
+    toast.error("Seu navegador não suporta síntese de voz.");
+    return;
   }
+  const clean = (text || "").trim();
+  if (!clean) return;
   const synth = window.speechSynthesis;
-  const u = new SpeechSynthesisUtterance(text);
+
+  // Always build a brand-new utterance — never reuse an empty one.
+  const u = new SpeechSynthesisUtterance(clean);
   u.lang = lang;
   u.rate = 1;
   u.volume = 1;
   u.pitch = 1;
-  const voice = options.useVoice === true && _voicesLoaded ? pickVoice(synth.getVoices(), lang) : null;
-  if (voice) u.voice = voice;
+  if (options.useVoice && _voicesLoaded) {
+    const v = pickVoice(synth.getVoices(), lang);
+    if (v) u.voice = v;
+  }
   u.onstart = () => startKeepAlive();
   u.onend = () => stopKeepAlive();
   u.onerror = (e) => {
@@ -272,43 +310,28 @@ function prepareUtterance(text: string, lang: string, options: SpeakOptions = {}
     const err = (e as SpeechSynthesisErrorEvent).error;
     if (err === "interrupted" || err === "canceled") return;
     console.warn("speechSynthesis error:", err);
-    if (err === "synthesis-failed" && options.useVoice === true && (options.retries ?? 1) > 0) {
-      window.setTimeout(() => speak(text, lang, null, { retries: 0, useVoice: false }), 140);
+    if (err === "synthesis-failed" && !options._retry) {
+      // Retry once with no voice selection and a fresh utterance
+      window.setTimeout(
+        () => speak(clean, lang, null, { useVoice: false, _retry: true }),
+        180,
+      );
       return;
     }
     toast.error(
-      "Áudio: falha na voz do navegador. Verifique volume/saída Bluetooth e tente o botão Ouvir novamente.",
+      "Áudio do Chrome falhou. Verifique se o som do navegador toca no fone Bluetooth (teste com um vídeo).",
     );
   };
-  return u;
-}
 
-function speak(
-  text: string,
-  lang: string,
-  prepared?: SpeechSynthesisUtterance | null,
-  options: SpeakOptions = {},
-) {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-    toast.error("Seu navegador não suporta síntese de voz.");
-    return;
+  // Cancel current queue, then speak immediately (no setTimeout —
+  // Android Chrome can drop the call when scheduled outside the gesture).
+  try {
+    if (synth.speaking || synth.pending) synth.cancel();
+  } catch {
+    /* ignore */
   }
-  if (!text?.trim()) return;
-  const synth = window.speechSynthesis;
-  const u = prepared || prepareUtterance(text, lang, { retries: 1, useVoice: false, ...options });
-  if (!u) return;
-  u.text = text;
-  u.lang = lang;
-  const queued = synth.speaking || synth.pending;
-  if (queued) synth.cancel();
-  const play = () => {
-    if (synth.paused) synth.resume();
-    synth.speak(u);
-    window.setTimeout(() => {
-      if (synth.paused) synth.resume();
-    }, 0);
-  };
-  window.setTimeout(play, queued ? 90 : 0);
+  if (synth.paused) synth.resume();
+  synth.speak(u);
 }
 
 // Minimal SpeechRecognition typing
@@ -406,6 +429,10 @@ function LiveTranslatorPage() {
   const [btConnecting, setBtConnecting] = React.useState<Slot | null>(null);
   const nextSpeakRef = React.useRef<SpeechSynthesisUtterance | null>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
+  const [voiceCount, setVoiceCount] = React.useState(0);
+  const [audioReady, setAudioReady] = React.useState(false);
+  const ttsSupported =
+    typeof window !== "undefined" && "speechSynthesis" in window;
 
   // Online/offline status for limited offline mode
   const [online, setOnline] = React.useState<boolean>(() =>
@@ -447,6 +474,8 @@ function LiveTranslatorPage() {
   const setupSystemBluetooth = React.useCallback((slot: Slot) => {
     try {
       setBtConnecting(slot);
+      unlockAudio();
+      setAudioReady(true);
       const lang = slot === "A" ? from : to;
       const testText = audioTestPhrase(lang, slot);
       const suggested = slot === "A" ? "Bluetooth do smartphone" : "Segundo fone Bluetooth";
@@ -472,11 +501,13 @@ function LiveTranslatorPage() {
   }, [btHistory, from, saveBtHistory, to]);
 
 
+
   React.useEffect(() => {
     setHistory(loadHistory());
     // Pre-load TTS voices so the first speak() call is not silent
-    ensureVoicesLoaded();
+    ensureVoicesLoaded().then((v) => setVoiceCount(v.length));
   }, []);
+
 
 
   const persist = (next: HistoryItem[]) => {
@@ -844,6 +875,39 @@ function LiveTranslatorPage() {
         </label>
       </div>
 
+
+      {/* Audio diagnostics */}
+      <div className="mb-4 rounded-2xl border border-border bg-card/60 p-3 text-xs">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-semibold">Diagnóstico de áudio:</span>
+          <Badge variant={ttsSupported ? "default" : "destructive"}>
+            {ttsSupported ? "Voz suportada" : "Sem suporte de voz"}
+          </Badge>
+          <Badge variant={voiceCount > 0 ? "default" : "secondary"}>
+            {voiceCount} vozes carregadas
+          </Badge>
+          <Badge variant={audioReady ? "default" : "secondary"}>
+            {audioReady ? "Áudio desbloqueado" : "Áudio bloqueado"}
+          </Badge>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              unlockAudio();
+              setAudioReady(true);
+              speak(audioTestPhrase(to), to);
+            }}
+          >
+            <Volume2 className="h-3.5 w-3.5" /> Testar áudio do Chrome
+          </Button>
+        </div>
+        <p className="mt-2 text-muted-foreground">
+          O Chrome reproduz o áudio na saída ativa do smartphone. Se o teste
+          tocar no celular mas não no fone, conecte o Bluetooth nas configurações
+          do Android e reproduza um vídeo no Chrome para confirmar o roteamento
+          — o app não controla qual fone recebe o som.
+        </p>
+      </div>
 
 
       <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)} className="space-y-4">

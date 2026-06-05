@@ -1,71 +1,45 @@
-## Objetivo
-Adicionar camada de monetização (markup, taxa de serviço, upsells, dashboard financeiro) sobre o fluxo Duffel existente — sem alterar reservas, autenticação ou integrações atuais.
+O problema real não parece ser a tradução nem o pareamento Bluetooth em si. O app traduz corretamente; a falha está na etapa em que o navegador Chrome/Android tenta transformar o texto traduzido em voz usando a API nativa `speechSynthesis`. Essa API é instável em Android, principalmente quando há microfone ativo, troca de saída Bluetooth, voz do sistema indisponível ou quando a fala acontece depois de uma tradução assíncrona.
 
-## Escopo (apenas adições)
+Também há uma limitação importante: uma página web no Chrome Android não consegue escolher diretamente “tocar neste fone Bluetooth”. Ela só toca na saída de áudio ativa do smartphone. Se o áudio do próprio Chrome não estiver roteando para o fone, o app não tem permissão para forçar isso como um app nativo faria.
 
-### 1. Banco de dados (migration aditiva)
-- `commission_settings` — configuração global de markup/taxa (admin):
-  - `markup_type` (percent|fixed), `markup_value`, `service_fee_type`, `service_fee_value`, `currency`, `upsells_enabled`, `updated_at`
-- `booking_commissions` — histórico financeiro por reserva (não toca `flight_orders`/`stay_orders`):
-  - `id`, `user_id`, `order_kind` (flight|stay), `order_id` (FK lógico), `original_amount`, `markup_amount`, `service_fee_amount`, `final_amount`, `currency`, `net_profit`, `upsells` (jsonb), `created_at`
-- Role `admin` no enum `app_role` (já existe estrutura `user_roles`)
-- RLS: usuário vê só suas comissões; admin vê tudo via `has_role(uid,'admin')`
+Plano para resolver no app:
 
-### 2. Backend (server functions novas, não modifica existentes)
-- `src/lib/pricing.functions.ts`:
-  - `getPricingConfig()` — lê `commission_settings`
-  - `applyPricing(originalAmount, currency)` — retorna `{ original, markup, serviceFee, final }`
-  - `previewOfferPricing({ offer_id, kind })` — retorna breakdown sem reservar
-- `src/lib/commission.functions.ts`:
-  - `recordCommission(...)` — chamado após criar reserva
-  - `listMyCommissions()`, `adminFinancialSummary()` (admin only)
-- `src/lib/admin.functions.ts`:
-  - `getCommissionSettings()`, `updateCommissionSettings()` (admin only)
+1. Reverter a parte de “Bluetooth dentro do app” para um fluxo honesto e confiável
+   - Manter o Bluetooth como saída do sistema do smartphone.
+   - Remover qualquer indicação de que o app controla/conecta diretamente o fone.
+   - Adicionar um teste de saída de áudio mais claro antes de iniciar a tradução.
 
-Hook leve em `duffel.functions.ts` / `stays.functions.ts`: após `insert` em `flight_orders`/`stay_orders`, chamar helper que grava em `booking_commissions`. Não muda assinatura nem retorno.
+2. Corrigir a reprodução de voz no Chrome Android
+   - Reescrever a função `speak()` para evitar padrões que causam `synthesis-failed` no Android:
+     - não reutilizar `SpeechSynthesisUtterance` vazio;
+     - não chamar `speechSynthesis.cancel()` imediatamente antes de toda fala;
+     - não usar `setTimeout` para iniciar a fala quando ela precisa vir de uma ação do usuário;
+     - reiniciar a fila de fala de forma mais segura;
+     - carregar e selecionar vozes disponíveis antes do teste.
+   - Adicionar um “desbloqueio de áudio” via toque do usuário antes da primeira tradução falada.
 
-### 3. Frontend — adições leves
-- **Componente `<PriceBreakdown>`** (`src/components/pricing/PriceBreakdown.tsx`): exibe original + taxa JAQTRYP + markup + final, com badge "Preço justo" / "Boa oportunidade" baseado em score simples
-- **Componente `<UpsellSuggestions>`**: cards de seguro/bagagem/chip/traslado (mock-driven via IA, sem cobrança real ainda — apenas seleção que entra no `upsells` jsonb)
-- **Componente `<SmartCheckoutSummary>`**: resumo IA + score conforto + alertas Shield, exibido no checkout de voos/hotéis
-- Integrar nos checkouts de `_app.flights.tsx` e `_app.stays.tsx` apenas inserindo os componentes acima — sem refatorar fluxo
+3. Separar microfone e fala para evitar conflito
+   - Garantir que o reconhecimento de voz pare completamente antes do TTS iniciar.
+   - Inserir um pequeno estado intermediário “preparando áudio” após o microfone encerrar, para evitar que Chrome/Android tente usar entrada e saída ao mesmo tempo.
 
-### 4. Dashboard admin — nova rota
-- `src/routes/_app.admin.financial.tsx`:
-  - Cards: receita mensal, comissão total, lucro líquido, ticket médio, upsells vendidos
-  - Tabela de reservas com breakdown
-  - Gráfico simples (recharts) de receita por dia
-  - Visível apenas se `has_role(user,'admin')`
-- `src/routes/_app.admin.settings.tsx`:
-  - Form de markup, taxa de serviço, toggle upsells, moeda padrão
+4. Adicionar diagnóstico visível no app
+   - Mostrar se o navegador suporta voz.
+   - Mostrar quantas vozes o Chrome carregou.
+   - Botão “Testar áudio do Chrome” e botão “Testar Bluetooth do aparelho”.
+   - Se continuar falhando, mostrar instrução objetiva: testar um vídeo/áudio no Chrome; se o Chrome não tocar no fone, o problema é roteamento do Android/Bluetooth, não do tradutor.
 
-### 5. IA de conversão
-- Expandir `api.chat.tsx`: adicionar prompt opcional quando contexto inclui `pricing_breakdown` para explicar vantagens, economia, score conforto. Sem mudar escopo travel-only existente.
+5. Fallback prático se o `speechSynthesis` continuar falhando
+   - Quando o Chrome retornar `synthesis-failed`, o app não ficará apenas com erro: vai manter a tradução na tela e orientar o usuário a tocar novamente em “Ouvir”.
+   - Se o aparelho continuar recusando TTS, a alternativa técnica realmente confiável é trocar a voz nativa do navegador por áudio TTS gerado em servidor/serviço de voz, reproduzido como arquivo de áudio normal. Isso exigiria uma integração de voz/TTS adicional, porque a API atual usada para tradução não gera áudio.
 
-## Arquivos novos
-- migration SQL
-- `src/lib/pricing.functions.ts`
-- `src/lib/commission.functions.ts`
-- `src/lib/admin.functions.ts`
-- `src/components/pricing/PriceBreakdown.tsx`
-- `src/components/pricing/UpsellSuggestions.tsx`
-- `src/components/pricing/SmartCheckoutSummary.tsx`
-- `src/routes/_app.admin.financial.tsx`
-- `src/routes/_app.admin.settings.tsx`
+Resultado esperado:
+- Se o problema for o código atual chamando a fala de forma incompatível com Chrome Android, a correção deve voltar a tocar no fone conectado.
+- Se o problema for o Chrome/Android não roteando TTS para o Bluetooth ou a voz do sistema falhando, o app vai diagnosticar isso claramente e evitar prometer uma conexão que a web não consegue controlar.
 
-## Arquivos modificados (mínimo)
-- `src/lib/duffel.functions.ts` — adicionar chamada a `recordCommission` após insert (1 linha)
-- `src/lib/stays.functions.ts` — idem
-- `src/routes/_app.flights.tsx` — inserir `<PriceBreakdown>` + `<UpsellSuggestions>` no checkout
-- `src/routes/_app.stays.tsx` — idem
-- `src/components/site/Navbar.tsx` — link "Admin" condicional
-- `src/routes/api.chat.tsx` — prompt expandido com pricing context (opcional)
+<presentation-actions>
+  <presentation-open-history>View History</presentation-open-history>
+</presentation-actions>
 
-## Garantias
-- Nenhum endpoint Duffel alterado
-- `flight_orders` / `stay_orders` intactos
-- Valor original Duffel preservado em todos lugares
-- Upsells por enquanto são metadata (não cobrados separadamente) — flag para fase 2
-- Tudo gated por feature: se `commission_settings` não existir, sistema funciona como hoje (markup=0)
-
-Confirma para eu implementar?
+<presentation-actions>
+<presentation-link url="https://docs.lovable.dev/tips-tricks/troubleshooting">Troubleshooting docs</presentation-link>
+</presentation-actions>
