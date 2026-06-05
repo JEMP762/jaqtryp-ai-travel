@@ -18,6 +18,8 @@ import {
   Sparkles,
   Image as ImageIcon,
   Send,
+  Headphones,
+  Smartphone,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -215,6 +217,16 @@ function pickVoice(voices: SpeechSynthesisVoice[], lang: string): SpeechSynthesi
   return partial || null;
 }
 
+function audioTestPhrase(lang: string, slot?: string) {
+  const suffix = slot ? ` ${slot}` : "";
+  if (lang.startsWith("en")) return `Bluetooth audio test${suffix}.`;
+  if (lang.startsWith("es")) return `Prueba de audio Bluetooth${suffix}.`;
+  if (lang.startsWith("fr")) return `Test audio Bluetooth${suffix}.`;
+  if (lang.startsWith("it")) return `Test audio Bluetooth${suffix}.`;
+  if (lang.startsWith("de")) return `Bluetooth Audiotest${suffix}.`;
+  return `Teste de áudio Bluetooth${suffix}.`;
+}
+
 // Chrome bug workaround: speechSynthesis pauses itself after ~15s of inactivity
 // or stops mid-utterance. Keep it alive by resuming periodically while speaking.
 let _keepAliveTimer: number | null = null;
@@ -237,46 +249,48 @@ function stopKeepAlive() {
   }
 }
 
-async function speak(text: string, lang: string) {
+function prepareUtterance(text: string, lang: string) {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+    return null;
+  }
+  const synth = window.speechSynthesis;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = lang;
+  u.rate = 1;
+  u.volume = 1;
+  u.pitch = 1;
+  const voice = pickVoice(synth.getVoices(), lang);
+  if (voice) u.voice = voice;
+  u.onstart = () => startKeepAlive();
+  u.onend = () => stopKeepAlive();
+  u.onerror = (e) => {
+    stopKeepAlive();
+    const err = (e as SpeechSynthesisErrorEvent).error;
+    if (err && err !== "interrupted" && err !== "canceled") {
+      console.warn("speechSynthesis error:", err);
+      toast.error(`Áudio: ${err}`);
+    }
+  };
+  return u;
+}
+
+function speak(text: string, lang: string, prepared?: SpeechSynthesisUtterance | null) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) {
     toast.error("Seu navegador não suporta síntese de voz.");
     return;
   }
   if (!text?.trim()) return;
   const synth = window.speechSynthesis;
-  try {
-    // Make sure voices are ready (otherwise speak() may silently no-op on first run)
-    if (!_voicesLoaded) await ensureVoicesLoaded();
-
-    // Reset any stuck queue. Wait a tick — calling speak() immediately after
-    // cancel() on Chrome can be ignored.
-    synth.cancel();
-    await new Promise((r) => setTimeout(r, 80));
-
-    // If for some reason it ended paused, resume.
+  const u = prepared || prepareUtterance(text, lang);
+  if (!u) return;
+  u.text = text;
+  u.lang = lang;
+  if (synth.speaking || synth.pending) synth.cancel();
+  if (synth.paused) synth.resume();
+  synth.speak(u);
+  window.setTimeout(() => {
     if (synth.paused) synth.resume();
-
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = lang;
-    u.rate = 1;
-    u.volume = 1;
-    u.pitch = 1;
-    const voice = pickVoice(synth.getVoices(), lang);
-    if (voice) u.voice = voice;
-    u.onstart = () => startKeepAlive();
-    u.onend = () => stopKeepAlive();
-    u.onerror = (e) => {
-      stopKeepAlive();
-      const err = (e as SpeechSynthesisErrorEvent).error;
-      if (err && err !== "interrupted" && err !== "canceled") {
-        console.warn("speechSynthesis error:", err);
-        toast.error(`Áudio: ${err}`);
-      }
-    };
-    synth.speak(u);
-  } catch (err) {
-    console.warn("speak() failed:", err);
-  }
+  }, 0);
 }
 
 // Minimal SpeechRecognition typing
