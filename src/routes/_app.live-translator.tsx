@@ -952,7 +952,7 @@ function LiveTranslatorPage() {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                doTranslate(text);
+                doTranslate(text, from, to, autoSpeak, prepareUtterance("", to));
               }
             }}
             placeholder={`Digite em ${langLabel(from)} e pressione Enter (Shift+Enter = nova linha)...`}
@@ -966,7 +966,14 @@ function LiveTranslatorPage() {
           <div className="flex gap-2">
             <Button
               variant={srA.listening ? "destructive" : "outline"}
-              onClick={srA.listening ? srA.stop : srA.start}
+              onClick={
+                srA.listening
+                  ? srA.stop
+                  : () => {
+                      nextSpeakRef.current = prepareUtterance("", to);
+                      srA.start();
+                    }
+              }
               disabled={!srA.supported}
             >
               {srA.listening ? (
