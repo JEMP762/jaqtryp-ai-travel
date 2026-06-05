@@ -495,11 +495,17 @@ function LiveTranslatorPage() {
   }, [btHistory, from, saveBtHistory, to]);
 
 
+  const [voiceCount, setVoiceCount] = React.useState(0);
+  const [audioReady, setAudioReady] = React.useState(false);
+  const ttsSupported =
+    typeof window !== "undefined" && "speechSynthesis" in window;
+
   React.useEffect(() => {
     setHistory(loadHistory());
     // Pre-load TTS voices so the first speak() call is not silent
-    ensureVoicesLoaded();
+    ensureVoicesLoaded().then((v) => setVoiceCount(v.length));
   }, []);
+
 
 
   const persist = (next: HistoryItem[]) => {
