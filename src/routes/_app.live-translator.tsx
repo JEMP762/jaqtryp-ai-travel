@@ -444,7 +444,7 @@ function LiveTranslatorPage() {
     localStorage.setItem("jaq-bt-history-v1", JSON.stringify(uniq.slice(0, 10)));
   }, []);
 
-  const useSystemBluetooth = React.useCallback((slot: Slot) => {
+  const setupSystemBluetooth = React.useCallback((slot: Slot) => {
     try {
       setBtConnecting(slot);
       const lang = slot === "A" ? from : to;
@@ -668,7 +668,7 @@ function LiveTranslatorPage() {
                   <Button
                     variant={dev ? "default" : "outline"}
                     size="sm"
-                    onClick={() => useSystemBluetooth(slot)}
+                    onClick={() => setupSystemBluetooth(slot)}
                     disabled={btConnecting === slot}
                     className="gap-1"
                   >
