@@ -920,7 +920,8 @@ function LiveTranslatorPage() {
                   size="sm"
                   onClick={() => {
                     setText(q);
-                    doTranslate(q, from, to, autoSpeak);
+                    const prepared = autoSpeak ? prepareUtterance("", to, { useVoice: false }) : null;
+                    doTranslate(q, from, to, autoSpeak, prepared);
                   }}
                 >
                   {q}
@@ -970,7 +971,8 @@ function LiveTranslatorPage() {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                doTranslate(text, from, to, autoSpeak);
+                const prepared = autoSpeak ? prepareUtterance("", to, { useVoice: false }) : null;
+                doTranslate(text, from, to, autoSpeak, prepared);
               }
             }}
             placeholder={`Digite em ${langLabel(from)} e pressione Enter (Shift+Enter = nova linha)...`}
