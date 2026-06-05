@@ -404,6 +404,8 @@ function useSpeechRecognition(lang: string, onFinal: (text: string) => void) {
   const [listening, setListening] = React.useState(false);
   const [interim, setInterim] = React.useState("");
   const recRef = React.useRef<SpeechRecognition | null>(null);
+  const finalsRef = React.useRef<string>("");
+  const wantListenRef = React.useRef(false);
   const supported = !!getSR();
 
   const start = React.useCallback(() => {
@@ -412,46 +414,96 @@ function useSpeechRecognition(lang: string, onFinal: (text: string) => void) {
       toast.error("Reconhecimento de voz não suportado neste navegador.");
       return;
     }
+    finalsRef.current = "";
+    wantListenRef.current = true;
+
     const rec = new SR();
     rec.lang = lang;
     rec.continuous = true;
     rec.interimResults = true;
+    // Increase precision: ask the engine for multiple candidates and pick the best.
+    try {
+      (rec as unknown as { maxAlternatives?: number }).maxAlternatives = 3;
+    } catch {
+      /* noop */
+    }
+
     rec.onresult = (e) => {
       let intr = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const r = e.results[i];
-        if (r.isFinal) {
-          const finalText = r[0].transcript.trim();
-          rec.stop();
-          setListening(false);
-          setInterim("");
-          onFinal(finalText);
-          return;
+        // Pick the candidate with the highest confidence when available.
+        let best = r[0];
+        let bestConf = best.confidence ?? 0;
+        for (let k = 1; k < r.length; k++) {
+          const alt = r[k];
+          const c = alt.confidence ?? 0;
+          if (c > bestConf) {
+            best = alt;
+            bestConf = c;
+          }
         }
-        intr += r[0].transcript;
+        if (r.isFinal) {
+          const piece = best.transcript.trim();
+          if (piece) {
+            finalsRef.current = (finalsRef.current ? finalsRef.current + " " : "") + piece;
+          }
+        } else {
+          intr += best.transcript;
+        }
       }
       setInterim(intr);
     };
+
     rec.onerror = (e) => {
-      if (e.error !== "aborted" && e.error !== "no-speech") {
-        toast.error(`Microfone: ${e.error}`);
-      }
+      if (e.error === "no-speech" || e.error === "aborted" || e.error === "network") return;
+      toast.error(`Microfone: ${e.error}`);
     };
+
     rec.onend = () => {
+      // If the user still wants to listen, auto-restart so we keep capturing
+      // long dialogs without dropping audio between engine chunks.
+      if (wantListenRef.current) {
+        try {
+          rec.start();
+          return;
+        } catch {
+          /* fallthrough to finalize below */
+        }
+      }
       setListening(false);
       setInterim("");
+      const full = finalsRef.current.trim();
+      finalsRef.current = "";
+      if (full) onFinal(full);
     };
+
     recRef.current = rec;
     rec.start();
     setListening(true);
   }, [lang, onFinal]);
 
   const stop = React.useCallback(() => {
-    recRef.current?.stop();
+    wantListenRef.current = false;
+    try {
+      recRef.current?.stop();
+    } catch {
+      /* noop */
+    }
     setListening(false);
   }, []);
 
-  React.useEffect(() => () => recRef.current?.stop(), []);
+  React.useEffect(
+    () => () => {
+      wantListenRef.current = false;
+      try {
+        recRef.current?.stop();
+      } catch {
+        /* noop */
+      }
+    },
+    [],
+  );
 
   return { listening, interim, start, stop, supported };
 }
