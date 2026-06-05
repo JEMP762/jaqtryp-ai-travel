@@ -255,12 +255,7 @@ function unlockAudio() {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
   try {
     const synth = window.speechSynthesis;
-    // Silent priming utterance inside the user gesture
-    const u = new SpeechSynthesisUtterance(" ");
-    u.volume = 0;
-    u.rate = 1;
-    synth.cancel();
-    synth.speak(u);
+    if (synth.paused) synth.resume();
     _audioUnlocked = true;
   } catch {
     /* ignore */
@@ -272,11 +267,21 @@ type SpeakOptions = {
   _retry?: boolean;
 };
 
-// Kept for API compatibility with existing call sites — returns null,
-// the new speak() builds a fresh utterance each time (reusing empty ones
-// triggers `synthesis-failed` on Chrome Android).
-function prepareUtterance(_text: string, _lang: string, _options: SpeakOptions = {}) {
-  return null as SpeechSynthesisUtterance | null;
+function prepareUtterance(text: string, lang: string, options: SpeakOptions = {}) {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+    return null as SpeechSynthesisUtterance | null;
+  }
+  const clean = (text || "").trim();
+  const u = new SpeechSynthesisUtterance(clean || ".");
+  u.lang = lang;
+  u.rate = 1;
+  u.volume = 1;
+  u.pitch = 1;
+  if (options.useVoice && _voicesLoaded) {
+    const v = pickVoice(window.speechSynthesis.getVoices(), lang);
+    if (v) u.voice = v;
+  }
+  return u;
 }
 
 function speak(
@@ -293,8 +298,8 @@ function speak(
   if (!clean) return;
   const synth = window.speechSynthesis;
 
-  // Always build a brand-new utterance — never reuse an empty one.
-  const u = new SpeechSynthesisUtterance(clean);
+  const u = _prepared || new SpeechSynthesisUtterance(clean);
+  u.text = clean;
   u.lang = lang;
   u.rate = 1;
   u.volume = 1;
