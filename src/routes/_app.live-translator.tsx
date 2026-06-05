@@ -902,7 +902,7 @@ function LiveTranslatorPage() {
                   size="sm"
                   onClick={() => {
                     setText(q);
-                    doTranslate(q);
+                    doTranslate(q, from, to, autoSpeak, prepareUtterance("", to));
                   }}
                 >
                   {q}
@@ -980,7 +980,7 @@ function LiveTranslatorPage() {
               )}
             </Button>
             <Button
-              onClick={() => doTranslate(text)}
+              onClick={() => doTranslate(text, from, to, autoSpeak, prepareUtterance("", to))}
               disabled={loading || !text.trim()}
               className="flex-1 bg-gradient-primary shadow-glow"
             >
