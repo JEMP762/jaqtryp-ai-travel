@@ -988,7 +988,7 @@ function LiveTranslatorPage() {
                 srA.listening
                   ? srA.stop
                   : () => {
-                      nextSpeakRef.current = null;
+                      nextSpeakRef.current = prepareUtterance("", to, { useVoice: false });
                       srA.start();
                     }
               }
@@ -1005,7 +1005,10 @@ function LiveTranslatorPage() {
               )}
             </Button>
             <Button
-              onClick={() => doTranslate(text, from, to, autoSpeak)}
+              onClick={() => {
+                const prepared = autoSpeak ? prepareUtterance("", to, { useVoice: false }) : null;
+                doTranslate(text, from, to, autoSpeak, prepared);
+              }}
               disabled={loading || !text.trim()}
               className="flex-1 bg-gradient-primary shadow-glow"
             >
