@@ -470,6 +470,8 @@ function LiveTranslatorPage() {
   const setupSystemBluetooth = React.useCallback((slot: Slot) => {
     try {
       setBtConnecting(slot);
+      unlockAudio();
+      setAudioReady(true);
       const lang = slot === "A" ? from : to;
       const testText = audioTestPhrase(lang, slot);
       const suggested = slot === "A" ? "Bluetooth do smartphone" : "Segundo fone Bluetooth";
