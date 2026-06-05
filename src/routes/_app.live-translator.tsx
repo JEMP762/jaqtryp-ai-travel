@@ -443,7 +443,10 @@ function LiveTranslatorPage() {
 
   React.useEffect(() => {
     setHistory(loadHistory());
+    // Pre-load TTS voices so the first speak() call is not silent
+    ensureVoicesLoaded();
   }, []);
+
 
   const persist = (next: HistoryItem[]) => {
     setHistory(next);
