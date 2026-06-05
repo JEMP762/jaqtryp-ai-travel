@@ -15,6 +15,7 @@ import { Route as CheapFlightsRouteImport } from './routes/cheap-flights'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CheckoutReturnRouteImport } from './routes/checkout.return'
+import { Route as ApiTtsRouteImport } from './routes/api.tts'
 import { Route as ApiChatRouteImport } from './routes/api.chat'
 import { Route as ApiAiRouteImport } from './routes/api.ai'
 import { Route as AppTranslatorRouteImport } from './routes/_app.translator'
@@ -58,6 +59,11 @@ const IndexRoute = IndexRouteImport.update({
 const CheckoutReturnRoute = CheckoutReturnRouteImport.update({
   id: '/checkout/return',
   path: '/checkout/return',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiTtsRoute = ApiTtsRouteImport.update({
+  id: '/api/tts',
+  path: '/api/tts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiChatRoute = ApiChatRouteImport.update({
@@ -154,6 +160,7 @@ export interface FileRoutesByFullPath {
   '/translator': typeof AppTranslatorRoute
   '/api/ai': typeof ApiAiRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/tts': typeof ApiTtsRoute
   '/checkout/return': typeof CheckoutReturnRoute
   '/admin/financial': typeof AppAdminFinancialRoute
   '/admin/settings': typeof AppAdminSettingsRoute
@@ -176,6 +183,7 @@ export interface FileRoutesByTo {
   '/translator': typeof AppTranslatorRoute
   '/api/ai': typeof ApiAiRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/tts': typeof ApiTtsRoute
   '/checkout/return': typeof CheckoutReturnRoute
   '/admin/financial': typeof AppAdminFinancialRoute
   '/admin/settings': typeof AppAdminSettingsRoute
@@ -200,6 +208,7 @@ export interface FileRoutesById {
   '/_app/translator': typeof AppTranslatorRoute
   '/api/ai': typeof ApiAiRoute
   '/api/chat': typeof ApiChatRoute
+  '/api/tts': typeof ApiTtsRoute
   '/checkout/return': typeof CheckoutReturnRoute
   '/_app/admin/financial': typeof AppAdminFinancialRoute
   '/_app/admin/settings': typeof AppAdminSettingsRoute
@@ -224,6 +233,7 @@ export interface FileRouteTypes {
     | '/translator'
     | '/api/ai'
     | '/api/chat'
+    | '/api/tts'
     | '/checkout/return'
     | '/admin/financial'
     | '/admin/settings'
@@ -246,6 +256,7 @@ export interface FileRouteTypes {
     | '/translator'
     | '/api/ai'
     | '/api/chat'
+    | '/api/tts'
     | '/checkout/return'
     | '/admin/financial'
     | '/admin/settings'
@@ -269,6 +280,7 @@ export interface FileRouteTypes {
     | '/_app/translator'
     | '/api/ai'
     | '/api/chat'
+    | '/api/tts'
     | '/checkout/return'
     | '/_app/admin/financial'
     | '/_app/admin/settings'
@@ -283,6 +295,7 @@ export interface RootRouteChildren {
   SignupRoute: typeof SignupRoute
   ApiAiRoute: typeof ApiAiRoute
   ApiChatRoute: typeof ApiChatRoute
+  ApiTtsRoute: typeof ApiTtsRoute
   CheckoutReturnRoute: typeof CheckoutReturnRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
@@ -329,6 +342,13 @@ declare module '@tanstack/react-router' {
       path: '/checkout/return'
       fullPath: '/checkout/return'
       preLoaderRoute: typeof CheckoutReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/tts': {
+      id: '/api/tts'
+      path: '/api/tts'
+      fullPath: '/api/tts'
+      preLoaderRoute: typeof ApiTtsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/chat': {
@@ -479,19 +499,10 @@ const rootRouteChildren: RootRouteChildren = {
   SignupRoute: SignupRoute,
   ApiAiRoute: ApiAiRoute,
   ApiChatRoute: ApiChatRoute,
+  ApiTtsRoute: ApiTtsRoute,
   CheckoutReturnRoute: CheckoutReturnRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

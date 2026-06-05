@@ -250,20 +250,35 @@ function stopKeepAlive() {
 
 // Audio unlock: Chrome/Android requires a user gesture before TTS works.
 let _audioUnlocked = false;
+let _fallbackAudio: HTMLAudioElement | null = null;
 function unlockAudio() {
   if (_audioUnlocked) return;
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
   try {
     const synth = window.speechSynthesis;
-    // Silent priming utterance inside the user gesture
-    const u = new SpeechSynthesisUtterance(" ");
-    u.volume = 0;
-    u.rate = 1;
-    synth.cancel();
-    synth.speak(u);
+    if (synth.paused) synth.resume();
     _audioUnlocked = true;
   } catch {
     /* ignore */
+  }
+}
+
+async function playAudioFallback(text: string, lang: string) {
+  if (typeof window === "undefined") return;
+  const clean = text.trim().slice(0, 180);
+  if (!clean) return;
+  try {
+    _fallbackAudio?.pause();
+    const url = `/api/tts?lang=${encodeURIComponent(lang)}&text=${encodeURIComponent(clean)}`;
+    const audio = new Audio(url);
+    audio.preload = "auto";
+    _fallbackAudio = audio;
+    await audio.play();
+  } catch (err) {
+    console.warn("audio fallback failed:", err);
+    toast.error(
+      "Áudio bloqueado pelo navegador. Toque em Testar áudio novamente e confirme o volume/saída Bluetooth do celular.",
+    );
   }
 }
 
@@ -272,11 +287,21 @@ type SpeakOptions = {
   _retry?: boolean;
 };
 
-// Kept for API compatibility with existing call sites — returns null,
-// the new speak() builds a fresh utterance each time (reusing empty ones
-// triggers `synthesis-failed` on Chrome Android).
-function prepareUtterance(_text: string, _lang: string, _options: SpeakOptions = {}) {
-  return null as SpeechSynthesisUtterance | null;
+function prepareUtterance(text: string, lang: string, options: SpeakOptions = {}) {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+    return null as SpeechSynthesisUtterance | null;
+  }
+  const clean = (text || "").trim();
+  const u = new SpeechSynthesisUtterance(clean || ".");
+  u.lang = lang;
+  u.rate = 1;
+  u.volume = 1;
+  u.pitch = 1;
+  if (options.useVoice && _voicesLoaded) {
+    const v = pickVoice(window.speechSynthesis.getVoices(), lang);
+    if (v) u.voice = v;
+  }
+  return u;
 }
 
 function speak(
@@ -293,8 +318,8 @@ function speak(
   if (!clean) return;
   const synth = window.speechSynthesis;
 
-  // Always build a brand-new utterance — never reuse an empty one.
-  const u = new SpeechSynthesisUtterance(clean);
+  const u = _prepared || new SpeechSynthesisUtterance(clean);
+  u.text = clean;
   u.lang = lang;
   u.rate = 1;
   u.volume = 1;
@@ -318,9 +343,7 @@ function speak(
       );
       return;
     }
-    toast.error(
-      "Áudio do Chrome falhou. Verifique se o som do navegador toca no fone Bluetooth (teste com um vídeo).",
-    );
+    void playAudioFallback(clean, lang);
   };
 
   // Cancel current queue, then speak immediately (no setTimeout —
