@@ -442,7 +442,6 @@ function LiveTranslatorPage() {
       setBtConnecting(slot);
       const lang = slot === "A" ? from : to;
       const testText = audioTestPhrase(lang, slot);
-      const prepared = prepareUtterance(testText, lang);
       const suggested = slot === "A" ? "Bluetooth do smartphone" : "Segundo fone Bluetooth";
       const typed =
         typeof window !== "undefined"
@@ -455,7 +454,7 @@ function LiveTranslatorPage() {
       const setter = slot === "A" ? setBtDeviceA : setBtDeviceB;
       setter(name);
       saveBtHistory([name, ...btHistory]);
-      speak(testText, lang, prepared);
+      speak(testText, lang);
       toast.success(`Áudio ${slot} pronto pelo Bluetooth do smartphone`);
     } catch (e) {
       const msg = (e as Error).message || "Configuração cancelada";
@@ -861,7 +860,7 @@ function LiveTranslatorPage() {
               interim={srA.interim}
               onStart={() => {
                 srB.stop();
-                nextSpeakRef.current = prepareUtterance("", to);
+                nextSpeakRef.current = null;
                 srA.start();
               }}
               onStop={srA.stop}
@@ -872,7 +871,7 @@ function LiveTranslatorPage() {
               interim={srB.interim}
               onStart={() => {
                 srA.stop();
-                nextSpeakRef.current = prepareUtterance("", from);
+                nextSpeakRef.current = null;
                 srB.start();
               }}
               onStop={srB.stop}
@@ -893,7 +892,7 @@ function LiveTranslatorPage() {
               listening={srA.listening}
               interim={srA.interim}
               onStart={() => {
-                nextSpeakRef.current = prepareUtterance("", to);
+                nextSpeakRef.current = null;
                 srA.start();
               }}
               onStop={srA.stop}
@@ -921,7 +920,7 @@ function LiveTranslatorPage() {
                   size="sm"
                   onClick={() => {
                     setText(q);
-                    doTranslate(q, from, to, autoSpeak, prepareUtterance("", to));
+                    doTranslate(q, from, to, autoSpeak);
                   }}
                 >
                   {q}
@@ -971,7 +970,7 @@ function LiveTranslatorPage() {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                doTranslate(text, from, to, autoSpeak, prepareUtterance("", to));
+                doTranslate(text, from, to, autoSpeak);
               }
             }}
             placeholder={`Digite em ${langLabel(from)} e pressione Enter (Shift+Enter = nova linha)...`}
@@ -989,7 +988,7 @@ function LiveTranslatorPage() {
                 srA.listening
                   ? srA.stop
                   : () => {
-                      nextSpeakRef.current = prepareUtterance("", to);
+                      nextSpeakRef.current = null;
                       srA.start();
                     }
               }
@@ -1006,7 +1005,7 @@ function LiveTranslatorPage() {
               )}
             </Button>
             <Button
-              onClick={() => doTranslate(text, from, to, autoSpeak, prepareUtterance("", to))}
+              onClick={() => doTranslate(text, from, to, autoSpeak)}
               disabled={loading || !text.trim()}
               className="flex-1 bg-gradient-primary shadow-glow"
             >
