@@ -16,7 +16,6 @@ import {
   Bluetooth,
   Glasses,
   Sparkles,
-  Image as ImageIcon,
   Send,
   Headphones,
   Smartphone,
@@ -379,6 +378,7 @@ function LiveTranslatorPage() {
   const [btDeviceA, setBtDeviceA] = React.useState<string | null>(null);
   const [btDeviceB, setBtDeviceB] = React.useState<string | null>(null);
   const [btConnecting, setBtConnecting] = React.useState<Slot | null>(null);
+  const nextSpeakRef = React.useRef<SpeechSynthesisUtterance | null>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
 
   // Online/offline status for limited offline mode
@@ -472,14 +472,20 @@ function LiveTranslatorPage() {
   );
 
   const doTranslate = React.useCallback(
-    async (input: string, f = from, t = to, speakOut = autoSpeak) => {
+    async (
+      input: string,
+      f = from,
+      t = to,
+      speakOut = autoSpeak,
+      prepared?: SpeechSynthesisUtterance | null,
+    ) => {
       if (!input.trim()) return;
       setLoading(true);
       try {
         const out = await translateText(input, f, t);
         setTranslated(out);
         addHistory(input, out, f, t);
-        if (speakOut) speak(out, t);
+        if (speakOut) speak(out, t, prepared);
       } catch (e) {
         toast.error((e as Error).message);
       } finally {
@@ -493,7 +499,9 @@ function LiveTranslatorPage() {
   const onFinalA = React.useCallback(
     (txt: string) => {
       setText(txt);
-      doTranslate(txt, from, to, true);
+      const prepared = nextSpeakRef.current;
+      nextSpeakRef.current = null;
+      doTranslate(txt, from, to, true, prepared);
     },
     [doTranslate, from, to],
   );
@@ -502,7 +510,9 @@ function LiveTranslatorPage() {
     (txt: string) => {
       // In conversation mode, B speaks in `to` lang and we translate back to `from`
       setText(txt);
-      doTranslate(txt, to, from, true);
+      const prepared = nextSpeakRef.current;
+      nextSpeakRef.current = null;
+      doTranslate(txt, to, from, true, prepared);
     },
     [doTranslate, from, to],
   );
