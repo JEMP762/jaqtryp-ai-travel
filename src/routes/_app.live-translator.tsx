@@ -248,7 +248,12 @@ function stopKeepAlive() {
   }
 }
 
-function prepareUtterance(text: string, lang: string) {
+type SpeakOptions = {
+  retries?: number;
+  useVoice?: boolean;
+};
+
+function prepareUtterance(text: string, lang: string, options: SpeakOptions = {}) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) {
     return null;
   }
@@ -258,38 +263,52 @@ function prepareUtterance(text: string, lang: string) {
   u.rate = 1;
   u.volume = 1;
   u.pitch = 1;
-  const voice = pickVoice(synth.getVoices(), lang);
+  const voice = options.useVoice === false || !_voicesLoaded ? null : pickVoice(synth.getVoices(), lang);
   if (voice) u.voice = voice;
   u.onstart = () => startKeepAlive();
   u.onend = () => stopKeepAlive();
   u.onerror = (e) => {
     stopKeepAlive();
     const err = (e as SpeechSynthesisErrorEvent).error;
-    if (err && err !== "interrupted" && err !== "canceled") {
-      console.warn("speechSynthesis error:", err);
-      toast.error(`Áudio: ${err}`);
+    if (err === "interrupted" || err === "canceled") return;
+    console.warn("speechSynthesis error:", err);
+    if (err === "synthesis-failed" && options.useVoice !== false && (options.retries ?? 1) > 0) {
+      window.setTimeout(() => speak(text, lang, null, { retries: 0, useVoice: false }), 140);
+      return;
     }
+    toast.error(
+      "Áudio: falha na voz do navegador. Verifique volume/saída Bluetooth e tente o botão Ouvir novamente.",
+    );
   };
   return u;
 }
 
-function speak(text: string, lang: string, prepared?: SpeechSynthesisUtterance | null) {
+function speak(
+  text: string,
+  lang: string,
+  prepared?: SpeechSynthesisUtterance | null,
+  options: SpeakOptions = {},
+) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) {
     toast.error("Seu navegador não suporta síntese de voz.");
     return;
   }
   if (!text?.trim()) return;
   const synth = window.speechSynthesis;
-  const u = prepared || prepareUtterance(text, lang);
+  const canUsePrepared = !!prepared && prepared.text.trim() === text.trim();
+  const u = canUsePrepared ? prepared : prepareUtterance(text, lang, { retries: 1, ...options });
   if (!u) return;
-  u.text = text;
   u.lang = lang;
-  if (synth.speaking || synth.pending) synth.cancel();
-  if (synth.paused) synth.resume();
-  synth.speak(u);
-  window.setTimeout(() => {
+  const queued = synth.speaking || synth.pending;
+  if (queued) synth.cancel();
+  const play = () => {
     if (synth.paused) synth.resume();
-  }, 0);
+    synth.speak(u);
+    window.setTimeout(() => {
+      if (synth.paused) synth.resume();
+    }, 0);
+  };
+  window.setTimeout(play, queued ? 90 : 0);
 }
 
 // Minimal SpeechRecognition typing
