@@ -29,6 +29,7 @@ import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppChatRouteImport } from './routes/_app.chat'
 import { Route as AppBillingRouteImport } from './routes/_app.billing'
 import { Route as ApiPublicTtsRouteImport } from './routes/api.public.tts'
+import { Route as ApiPublicSttRouteImport } from './routes/api.public.stt'
 import { Route as AppAdminSettingsRouteImport } from './routes/_app.admin.settings'
 import { Route as AppAdminFinancialRouteImport } from './routes/_app.admin.financial'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api.public.payments.webhook'
@@ -132,6 +133,11 @@ const ApiPublicTtsRoute = ApiPublicTtsRouteImport.update({
   path: '/api/public/tts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicSttRoute = ApiPublicSttRouteImport.update({
+  id: '/api/public/stt',
+  path: '/api/public/stt',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppAdminSettingsRoute = AppAdminSettingsRouteImport.update({
   id: '/admin/settings',
   path: '/admin/settings',
@@ -170,6 +176,7 @@ export interface FileRoutesByFullPath {
   '/checkout/return': typeof CheckoutReturnRoute
   '/admin/financial': typeof AppAdminFinancialRoute
   '/admin/settings': typeof AppAdminSettingsRoute
+  '/api/public/stt': typeof ApiPublicSttRoute
   '/api/public/tts': typeof ApiPublicTtsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -194,6 +201,7 @@ export interface FileRoutesByTo {
   '/checkout/return': typeof CheckoutReturnRoute
   '/admin/financial': typeof AppAdminFinancialRoute
   '/admin/settings': typeof AppAdminSettingsRoute
+  '/api/public/stt': typeof ApiPublicSttRoute
   '/api/public/tts': typeof ApiPublicTtsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -220,6 +228,7 @@ export interface FileRoutesById {
   '/checkout/return': typeof CheckoutReturnRoute
   '/_app/admin/financial': typeof AppAdminFinancialRoute
   '/_app/admin/settings': typeof AppAdminSettingsRoute
+  '/api/public/stt': typeof ApiPublicSttRoute
   '/api/public/tts': typeof ApiPublicTtsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -246,6 +255,7 @@ export interface FileRouteTypes {
     | '/checkout/return'
     | '/admin/financial'
     | '/admin/settings'
+    | '/api/public/stt'
     | '/api/public/tts'
     | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -270,6 +280,7 @@ export interface FileRouteTypes {
     | '/checkout/return'
     | '/admin/financial'
     | '/admin/settings'
+    | '/api/public/stt'
     | '/api/public/tts'
     | '/api/public/payments/webhook'
   id:
@@ -295,6 +306,7 @@ export interface FileRouteTypes {
     | '/checkout/return'
     | '/_app/admin/financial'
     | '/_app/admin/settings'
+    | '/api/public/stt'
     | '/api/public/tts'
     | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
@@ -309,6 +321,7 @@ export interface RootRouteChildren {
   ApiChatRoute: typeof ApiChatRoute
   ApiTtsRoute: typeof ApiTtsRoute
   CheckoutReturnRoute: typeof CheckoutReturnRoute
+  ApiPublicSttRoute: typeof ApiPublicSttRoute
   ApiPublicTtsRoute: typeof ApiPublicTtsRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
@@ -455,6 +468,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTtsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/stt': {
+      id: '/api/public/stt'
+      path: '/api/public/stt'
+      fullPath: '/api/public/stt'
+      preLoaderRoute: typeof ApiPublicSttRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/admin/settings': {
       id: '/_app/admin/settings'
       path: '/admin/settings'
@@ -521,9 +541,20 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChatRoute: ApiChatRoute,
   ApiTtsRoute: ApiTtsRoute,
   CheckoutReturnRoute: CheckoutReturnRoute,
+  ApiPublicSttRoute: ApiPublicSttRoute,
   ApiPublicTtsRoute: ApiPublicTtsRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
