@@ -248,15 +248,40 @@ function stopKeepAlive() {
   }
 }
 
-// Audio unlock: Chrome/Android requires a user gesture before TTS works.
+// Detect mobile — on Android/iOS the native speechSynthesis often routes audio
+// through the system/notification stream which Bluetooth headsets ignore.
+// We force the MP3 path (<audio> via /api/tts), which goes through the media
+// stream — the same path YouTube uses — so it routes to the BT headset.
+function isMobile() {
+  if (typeof navigator === "undefined") return false;
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
+// Audio unlock: Chrome/Android requires a user gesture before audio plays.
 let _audioUnlocked = false;
 let _fallbackAudio: HTMLAudioElement | null = null;
+
+// 1-frame silent MP3 used to unlock the <audio> element inside a user gesture.
+const SILENT_MP3 =
+  "data:audio/mp3;base64,SUQzBAAAAAAAI1RTU0UAAAAPAAADTGF2ZjU4Ljc2LjEwMAAAAAAAAAAAAAAA//tQxAADB8AhSmxhIIEVCSiJrDCQBTcu3UrAIwUdkRgQbFAZC1CQEwTJ9mjRvBA4UOLD8nKVOWfh+UlK3z/177OXrfOdKl7pyn3Xf//FJAhDQHIIAIBAEAAA//8AAAA=";
+
 function unlockAudio() {
   if (_audioUnlocked) return;
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  if (typeof window === "undefined") return;
   try {
-    const synth = window.speechSynthesis;
-    if (synth.paused) synth.resume();
+    // Unlock <audio> element (the path used on mobile for Bluetooth routing).
+    if (!_fallbackAudio) {
+      _fallbackAudio = new Audio();
+      _fallbackAudio.preload = "auto";
+    }
+    _fallbackAudio.src = SILENT_MP3;
+    const p = _fallbackAudio.play();
+    if (p && typeof p.then === "function") p.catch(() => {});
+    // Unlock speechSynthesis too (used on desktop).
+    if ("speechSynthesis" in window) {
+      const synth = window.speechSynthesis;
+      if (synth.paused) synth.resume();
+    }
     _audioUnlocked = true;
   } catch {
     /* ignore */
@@ -268,19 +293,35 @@ async function playAudioFallback(text: string, lang: string) {
   const clean = text.trim().slice(0, 180);
   if (!clean) return;
   try {
-    _fallbackAudio?.pause();
     const url = `/api/tts?lang=${encodeURIComponent(lang)}&text=${encodeURIComponent(clean)}`;
-    const audio = new Audio(url);
-    audio.preload = "auto";
-    _fallbackAudio = audio;
+    // Reuse a single Audio element — Android Chrome throttles new Audio() spam.
+    if (!_fallbackAudio) {
+      _fallbackAudio = new Audio();
+      _fallbackAudio.preload = "auto";
+    }
+    const audio = _fallbackAudio;
+    try {
+      audio.pause();
+    } catch {
+      /* ignore */
+    }
+    audio.src = url;
+    audio.onerror = () => {
+      const code = audio.error?.code;
+      console.warn("audio element error code:", code);
+      toast.error(
+        "Não foi possível tocar o áudio. Verifique se o fone Bluetooth está conectado ao celular e que o volume de mídia está alto.",
+      );
+    };
     await audio.play();
   } catch (err) {
     console.warn("audio fallback failed:", err);
     toast.error(
-      "Áudio bloqueado pelo navegador. Toque em Testar áudio novamente e confirme o volume/saída Bluetooth do celular.",
+      "Áudio bloqueado pelo navegador. Toque em Testar áudio novamente e confirme volume/saída Bluetooth do celular.",
     );
   }
 }
+
 
 type SpeakOptions = {
   useVoice?: boolean;
@@ -310,12 +351,22 @@ function speak(
   _prepared?: SpeechSynthesisUtterance | null,
   options: SpeakOptions = {},
 ) {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-    toast.error("Seu navegador não suporta síntese de voz.");
-    return;
-  }
   const clean = (text || "").trim();
   if (!clean) return;
+
+  // On mobile, ALWAYS use the MP3 path (/api/tts). speechSynthesis on
+  // Android Chrome routes through the notification stream, which Bluetooth
+  // headsets typically ignore. <audio> uses the media stream → Bluetooth works.
+  if (isMobile()) {
+    void playAudioFallback(clean, lang);
+    return;
+  }
+
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+    void playAudioFallback(clean, lang);
+    return;
+  }
+
   const synth = window.speechSynthesis;
 
   const u = _prepared || new SpeechSynthesisUtterance(clean);
