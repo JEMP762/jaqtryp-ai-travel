@@ -263,7 +263,7 @@ function prepareUtterance(text: string, lang: string, options: SpeakOptions = {}
   u.rate = 1;
   u.volume = 1;
   u.pitch = 1;
-  const voice = options.useVoice === false || !_voicesLoaded ? null : pickVoice(synth.getVoices(), lang);
+  const voice = options.useVoice === true && _voicesLoaded ? pickVoice(synth.getVoices(), lang) : null;
   if (voice) u.voice = voice;
   u.onstart = () => startKeepAlive();
   u.onend = () => stopKeepAlive();
@@ -272,7 +272,7 @@ function prepareUtterance(text: string, lang: string, options: SpeakOptions = {}
     const err = (e as SpeechSynthesisErrorEvent).error;
     if (err === "interrupted" || err === "canceled") return;
     console.warn("speechSynthesis error:", err);
-    if (err === "synthesis-failed" && options.useVoice !== false && (options.retries ?? 1) > 0) {
+    if (err === "synthesis-failed" && options.useVoice === true && (options.retries ?? 1) > 0) {
       window.setTimeout(() => speak(text, lang, null, { retries: 0, useVoice: false }), 140);
       return;
     }
@@ -295,9 +295,9 @@ function speak(
   }
   if (!text?.trim()) return;
   const synth = window.speechSynthesis;
-  const canUsePrepared = !!prepared && prepared.text.trim() === text.trim();
-  const u = canUsePrepared ? prepared : prepareUtterance(text, lang, { retries: 1, ...options });
+  const u = prepared || prepareUtterance(text, lang, { retries: 1, useVoice: false, ...options });
   if (!u) return;
+  u.text = text;
   u.lang = lang;
   const queued = synth.speaking || synth.pending;
   if (queued) synth.cancel();
