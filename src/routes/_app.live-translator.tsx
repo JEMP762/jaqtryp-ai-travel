@@ -308,7 +308,7 @@ async function playAudioFallback(text: string, lang: string) {
     if (!_fallbackAudio) {
       _fallbackAudio = new Audio();
       _fallbackAudio.preload = "auto";
-      _fallbackAudio.playsInline = true;
+      _fallbackAudio.setAttribute("playsinline", "true");
     }
     const audio = _fallbackAudio;
     try {
@@ -332,7 +332,8 @@ async function playAudioFallback(text: string, lang: string) {
     );
   } finally {
     if (objectUrl) {
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 5000);
+      const urlToRevoke = objectUrl;
+      window.setTimeout(() => URL.revokeObjectURL(urlToRevoke), 5000);
     }
   }
 }
