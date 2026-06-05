@@ -351,12 +351,22 @@ function speak(
   _prepared?: SpeechSynthesisUtterance | null,
   options: SpeakOptions = {},
 ) {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-    toast.error("Seu navegador não suporta síntese de voz.");
-    return;
-  }
   const clean = (text || "").trim();
   if (!clean) return;
+
+  // On mobile, ALWAYS use the MP3 path (/api/tts). speechSynthesis on
+  // Android Chrome routes through the notification stream, which Bluetooth
+  // headsets typically ignore. <audio> uses the media stream → Bluetooth works.
+  if (isMobile()) {
+    void playAudioFallback(clean, lang);
+    return;
+  }
+
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+    void playAudioFallback(clean, lang);
+    return;
+  }
+
   const synth = window.speechSynthesis;
 
   const u = _prepared || new SpeechSynthesisUtterance(clean);
