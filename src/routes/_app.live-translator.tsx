@@ -418,74 +418,30 @@ function LiveTranslatorPage() {
     localStorage.setItem("jaq-bt-history-v1", JSON.stringify(uniq.slice(0, 10)));
   }, []);
 
-  const pairBluetooth = React.useCallback(async (slot: Slot) => {
-    const nav = navigator as Navigator & { bluetooth?: any };
-    if (!nav.bluetooth?.requestDevice) {
-      toast.error(
-        "Seu navegador não suporta Web Bluetooth. Use Chrome/Edge no desktop ou Android, ou pareie os fones nas configurações do sistema.",
-      );
-      return;
-    }
+  const useSystemBluetooth = React.useCallback((slot: Slot) => {
     try {
       setBtConnecting(slot);
-      // Request a broad set of optional services so the OS picker reveals
-      // device names (audio headsets, wearables, beacons, etc.).
-      const device = await nav.bluetooth.requestDevice({
-        acceptAllDevices: true,
-        optionalServices: [
-          "battery_service",
-          "device_information",
-          "generic_access",
-          "generic_attribute",
-          "human_interface_device",
-          0x1108, // Headset (Classic profile UUID)
-          0x110a, // A2DP Source
-          0x110b, // A2DP Sink
-          0x111e, // Handsfree
-          0x1812, // HID over GATT
-        ],
-      });
-      // Prefer the broadcast name. If absent (common with audio devices that
-      // hide the name), fall back to the stable device id, then ask the user
-      // to label it so the slot card shows something meaningful.
-      let name: string = (device?.name as string) || "";
-      if (!name) {
-        const shortId =
-          typeof device?.id === "string" && device.id.length > 0
-            ? device.id.slice(0, 6).toUpperCase()
-            : "";
-        const suggested = shortId
-          ? `Fone ${slot} (${shortId})`
-          : `Fone ${slot}`;
-        const typed =
-          typeof window !== "undefined"
-            ? window.prompt(
-                "Não foi possível ler o nome do dispositivo. Dê um nome para identificá-lo:",
-                suggested,
-              )
-            : null;
-        name = (typed && typed.trim()) || suggested;
-      }
+      const suggested = slot === "A" ? "Bluetooth do smartphone" : "Segundo fone Bluetooth";
+      const typed =
+        typeof window !== "undefined"
+          ? window.prompt(
+              "Conecte o fone nas configurações Bluetooth do smartphone e informe o nome para identificação:",
+              suggested,
+            )
+          : null;
+      const name = (typed && typed.trim()) || suggested;
       const setter = slot === "A" ? setBtDeviceA : setBtDeviceB;
       setter(name);
       saveBtHistory([name, ...btHistory]);
-      try {
-        device.addEventListener?.("gattserverdisconnected", () => {
-          setter(null);
-          toast.info(`Bluetooth ${slot} desconectado`);
-        });
-        await device.gatt?.connect?.();
-      } catch {
-        /* OS handles audio routing */
-      }
-      toast.success(`Pessoa ${slot} conectada: ${name}`);
+      speak(audioTestPhrase(slot === "A" ? from : to, slot), slot === "A" ? from : to);
+      toast.success(`Áudio ${slot} pronto pelo Bluetooth do smartphone`);
     } catch (e) {
-      const msg = (e as Error).message || "Pareamento cancelado";
+      const msg = (e as Error).message || "Configuração cancelada";
       if (!/cancel/i.test(msg)) toast.error(msg);
     } finally {
       setBtConnecting(null);
     }
-  }, [btHistory, saveBtHistory]);
+  }, [btHistory, from, saveBtHistory, to]);
 
 
   React.useEffect(() => {
