@@ -40,8 +40,8 @@ export const Route = createFileRoute("/api/public/stt")({
           });
         }
 
-        const audio = inForm.get("audio");
-        if (!(audio instanceof File) && !(audio instanceof Blob)) {
+        const audio = inForm.get("audio") as unknown;
+        if (!(audio instanceof Blob)) {
           return new Response(JSON.stringify({ error: "Missing audio" }), {
             status: 400,
             headers: { "content-type": "application/json" },
