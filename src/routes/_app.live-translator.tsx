@@ -378,132 +378,154 @@ function speak(
 }
 
 
-// Minimal SpeechRecognition typing
-type SRConstructor = new () => SpeechRecognition;
-interface SpeechRecognition extends EventTarget {
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  start: () => void;
-  stop: () => void;
-  maxAlternatives?: number;
-  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string; confidence?: number }> & { isFinal: boolean; length: number }>; resultIndex: number }) => void) | null;
-  onerror: ((e: { error: string }) => void) | null;
-  onend: (() => void) | null;
-}
-
-function getSR(): SRConstructor | null {
-  if (typeof window === "undefined") return null;
-  const w = window as unknown as {
-    SpeechRecognition?: SRConstructor;
-    webkitSpeechRecognition?: SRConstructor;
-  };
-  return w.SpeechRecognition || w.webkitSpeechRecognition || null;
-}
-
+// High-accuracy STT via ElevenLabs Scribe.
+// We record the user's voice with MediaRecorder and POST it to /api/public/stt,
+// which calls ElevenLabs scribe_v2 server-side and returns the transcript.
+// This is far more precise than the browser's native SpeechRecognition.
 function useSpeechRecognition(lang: string, onFinal: (text: string) => void) {
   const [listening, setListening] = React.useState(false);
   const [interim, setInterim] = React.useState("");
-  const recRef = React.useRef<SpeechRecognition | null>(null);
-  const finalsRef = React.useRef<string>("");
-  const wantListenRef = React.useRef(false);
-  const supported = !!getSR();
+  const recRef = React.useRef<MediaRecorder | null>(null);
+  const streamRef = React.useRef<MediaStream | null>(null);
+  const chunksRef = React.useRef<Blob[]>([]);
+  const cancelledRef = React.useRef(false);
+  const supported =
+    typeof window !== "undefined" &&
+    typeof navigator !== "undefined" &&
+    !!navigator.mediaDevices?.getUserMedia &&
+    typeof window.MediaRecorder !== "undefined";
 
-  const start = React.useCallback(() => {
-    const SR = getSR();
-    if (!SR) {
-      toast.error("Reconhecimento de voz não suportado neste navegador.");
-      return;
-    }
-    finalsRef.current = "";
-    wantListenRef.current = true;
-
-    const rec = new SR();
-    rec.lang = lang;
-    rec.continuous = true;
-    rec.interimResults = true;
-    // Increase precision: ask the engine for multiple candidates and pick the best.
-    try {
-      (rec as unknown as { maxAlternatives?: number }).maxAlternatives = 3;
-    } catch {
-      /* noop */
-    }
-
-    rec.onresult = (e) => {
-      let intr = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const r = e.results[i];
-        // Pick the candidate with the highest confidence when available.
-        let best = r[0];
-        let bestConf = best.confidence ?? 0;
-        for (let k = 1; k < r.length; k++) {
-          const alt = r[k];
-          const c = alt.confidence ?? 0;
-          if (c > bestConf) {
-            best = alt;
-            bestConf = c;
-          }
-        }
-        if (r.isFinal) {
-          const piece = best.transcript.trim();
-          if (piece) {
-            finalsRef.current = (finalsRef.current ? finalsRef.current + " " : "") + piece;
-          }
-        } else {
-          intr += best.transcript;
-        }
-      }
-      setInterim(intr);
-    };
-
-    rec.onerror = (e) => {
-      if (e.error === "no-speech" || e.error === "aborted" || e.error === "network") return;
-      toast.error(`Microfone: ${e.error}`);
-    };
-
-    rec.onend = () => {
-      // If the user still wants to listen, auto-restart so we keep capturing
-      // long dialogs without dropping audio between engine chunks.
-      if (wantListenRef.current) {
-        try {
-          rec.start();
-          return;
-        } catch {
-          /* fallthrough to finalize below */
-        }
-      }
-      setListening(false);
-      setInterim("");
-      const full = finalsRef.current.trim();
-      finalsRef.current = "";
-      if (full) onFinal(full);
-    };
-
-    recRef.current = rec;
-    rec.start();
-    setListening(true);
-  }, [lang, onFinal]);
-
-  const stop = React.useCallback(() => {
-    wantListenRef.current = false;
-    try {
-      recRef.current?.stop();
-    } catch {
-      /* noop */
-    }
-    setListening(false);
+  const stopTracks = React.useCallback(() => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
   }, []);
 
-  React.useEffect(
-    () => () => {
-      wantListenRef.current = false;
+  const start = React.useCallback(async () => {
+    if (!supported) {
+      toast.error("Gravação de voz não suportada neste navegador.");
+      return;
+    }
+    try {
+      cancelledRef.current = false;
+      chunksRef.current = [];
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+        },
+      });
+      streamRef.current = stream;
+
+      // Pick the best MIME the browser supports.
+      const candidates = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/ogg;codecs=opus",
+        "audio/mp4",
+      ];
+      let mime = "";
+      for (const c of candidates) {
+        if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(c)) {
+          mime = c;
+          break;
+        }
+      }
+
+      const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      recRef.current = rec;
+
+      rec.ondataavailable = (ev) => {
+        if (ev.data && ev.data.size > 0) chunksRef.current.push(ev.data);
+      };
+
+      rec.onerror = () => {
+        toast.error("Falha ao gravar áudio do microfone.");
+        stopTracks();
+        setListening(false);
+        setInterim("");
+      };
+
+      rec.onstop = async () => {
+        setListening(false);
+        setInterim("");
+        stopTracks();
+
+        if (cancelledRef.current) {
+          chunksRef.current = [];
+          return;
+        }
+
+        const blobType = mime || "audio/webm";
+        const blob = new Blob(chunksRef.current, { type: blobType });
+        chunksRef.current = [];
+
+        if (blob.size < 1200) {
+          // ~too short to be useful
+          return;
+        }
+
+        try {
+          setInterim("Transcrevendo…");
+          const fd = new FormData();
+          fd.append("audio", blob, "audio.webm");
+          fd.append("lang", lang);
+          const resp = await fetch("/api/public/stt", { method: "POST", body: fd });
+          setInterim("");
+          if (!resp.ok) {
+            const err = await resp.text();
+            toast.error(`Transcrição falhou: ${err.slice(0, 120)}`);
+            return;
+          }
+          const data = (await resp.json()) as { text?: string };
+          const text = (data.text || "").trim();
+          if (text) onFinal(text);
+        } catch (err) {
+          setInterim("");
+          toast.error(`Erro de rede na transcrição: ${(err as Error).message}`);
+        }
+      };
+
+      // Collect data periodically so a crash doesn't lose audio.
+      rec.start(1000);
+      setListening(true);
+      setInterim("Gravando…");
+    } catch (err) {
+      const msg = (err as Error).message || "Permissão de microfone negada";
+      toast.error(`Microfone: ${msg}`);
+      stopTracks();
+    }
+  }, [lang, onFinal, supported, stopTracks]);
+
+  const stop = React.useCallback(() => {
+    const rec = recRef.current;
+    if (rec && rec.state !== "inactive") {
       try {
-        recRef.current?.stop();
+        rec.stop();
       } catch {
         /* noop */
       }
+    } else {
+      setListening(false);
+      setInterim("");
+      stopTracks();
+    }
+  }, [stopTracks]);
+
+  React.useEffect(
+    () => () => {
+      cancelledRef.current = true;
+      const rec = recRef.current;
+      if (rec && rec.state !== "inactive") {
+        try {
+          rec.stop();
+        } catch {
+          /* noop */
+        }
+      }
+      stopTracks();
     },
-    [],
+    [stopTracks],
   );
 
   return { listening, interim, start, stop, supported };
