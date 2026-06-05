@@ -501,10 +501,6 @@ function LiveTranslatorPage() {
   }, [btHistory, from, saveBtHistory, to]);
 
 
-  const [voiceCount, setVoiceCount] = React.useState(0);
-  const [audioReady, setAudioReady] = React.useState(false);
-  const ttsSupported =
-    typeof window !== "undefined" && "speechSynthesis" in window;
 
   React.useEffect(() => {
     setHistory(loadHistory());
