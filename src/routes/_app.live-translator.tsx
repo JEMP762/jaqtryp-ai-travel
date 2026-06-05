@@ -16,8 +16,9 @@ import {
   Bluetooth,
   Glasses,
   Sparkles,
-  Image as ImageIcon,
   Send,
+  Headphones,
+  Smartphone,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -215,6 +216,16 @@ function pickVoice(voices: SpeechSynthesisVoice[], lang: string): SpeechSynthesi
   return partial || null;
 }
 
+function audioTestPhrase(lang: string, slot?: string) {
+  const suffix = slot ? ` ${slot}` : "";
+  if (lang.startsWith("en")) return `Bluetooth audio test${suffix}.`;
+  if (lang.startsWith("es")) return `Prueba de audio Bluetooth${suffix}.`;
+  if (lang.startsWith("fr")) return `Test audio Bluetooth${suffix}.`;
+  if (lang.startsWith("it")) return `Test audio Bluetooth${suffix}.`;
+  if (lang.startsWith("de")) return `Bluetooth Audiotest${suffix}.`;
+  return `Teste de áudio Bluetooth${suffix}.`;
+}
+
 // Chrome bug workaround: speechSynthesis pauses itself after ~15s of inactivity
 // or stops mid-utterance. Keep it alive by resuming periodically while speaking.
 let _keepAliveTimer: number | null = null;
@@ -237,46 +248,48 @@ function stopKeepAlive() {
   }
 }
 
-async function speak(text: string, lang: string) {
+function prepareUtterance(text: string, lang: string) {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
+    return null;
+  }
+  const synth = window.speechSynthesis;
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = lang;
+  u.rate = 1;
+  u.volume = 1;
+  u.pitch = 1;
+  const voice = pickVoice(synth.getVoices(), lang);
+  if (voice) u.voice = voice;
+  u.onstart = () => startKeepAlive();
+  u.onend = () => stopKeepAlive();
+  u.onerror = (e) => {
+    stopKeepAlive();
+    const err = (e as SpeechSynthesisErrorEvent).error;
+    if (err && err !== "interrupted" && err !== "canceled") {
+      console.warn("speechSynthesis error:", err);
+      toast.error(`Áudio: ${err}`);
+    }
+  };
+  return u;
+}
+
+function speak(text: string, lang: string, prepared?: SpeechSynthesisUtterance | null) {
   if (typeof window === "undefined" || !("speechSynthesis" in window)) {
     toast.error("Seu navegador não suporta síntese de voz.");
     return;
   }
   if (!text?.trim()) return;
   const synth = window.speechSynthesis;
-  try {
-    // Make sure voices are ready (otherwise speak() may silently no-op on first run)
-    if (!_voicesLoaded) await ensureVoicesLoaded();
-
-    // Reset any stuck queue. Wait a tick — calling speak() immediately after
-    // cancel() on Chrome can be ignored.
-    synth.cancel();
-    await new Promise((r) => setTimeout(r, 80));
-
-    // If for some reason it ended paused, resume.
+  const u = prepared || prepareUtterance(text, lang);
+  if (!u) return;
+  u.text = text;
+  u.lang = lang;
+  if (synth.speaking || synth.pending) synth.cancel();
+  if (synth.paused) synth.resume();
+  synth.speak(u);
+  window.setTimeout(() => {
     if (synth.paused) synth.resume();
-
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang = lang;
-    u.rate = 1;
-    u.volume = 1;
-    u.pitch = 1;
-    const voice = pickVoice(synth.getVoices(), lang);
-    if (voice) u.voice = voice;
-    u.onstart = () => startKeepAlive();
-    u.onend = () => stopKeepAlive();
-    u.onerror = (e) => {
-      stopKeepAlive();
-      const err = (e as SpeechSynthesisErrorEvent).error;
-      if (err && err !== "interrupted" && err !== "canceled") {
-        console.warn("speechSynthesis error:", err);
-        toast.error(`Áudio: ${err}`);
-      }
-    };
-    synth.speak(u);
-  } catch (err) {
-    console.warn("speak() failed:", err);
-  }
+  }, 0);
 }
 
 // Minimal SpeechRecognition typing
@@ -365,6 +378,7 @@ function LiveTranslatorPage() {
   const [btDeviceA, setBtDeviceA] = React.useState<string | null>(null);
   const [btDeviceB, setBtDeviceB] = React.useState<string | null>(null);
   const [btConnecting, setBtConnecting] = React.useState<Slot | null>(null);
+  const nextSpeakRef = React.useRef<SpeechSynthesisUtterance | null>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
 
   // Online/offline status for limited offline mode
@@ -404,74 +418,33 @@ function LiveTranslatorPage() {
     localStorage.setItem("jaq-bt-history-v1", JSON.stringify(uniq.slice(0, 10)));
   }, []);
 
-  const pairBluetooth = React.useCallback(async (slot: Slot) => {
-    const nav = navigator as Navigator & { bluetooth?: any };
-    if (!nav.bluetooth?.requestDevice) {
-      toast.error(
-        "Seu navegador não suporta Web Bluetooth. Use Chrome/Edge no desktop ou Android, ou pareie os fones nas configurações do sistema.",
-      );
-      return;
-    }
+  const useSystemBluetooth = React.useCallback((slot: Slot) => {
     try {
       setBtConnecting(slot);
-      // Request a broad set of optional services so the OS picker reveals
-      // device names (audio headsets, wearables, beacons, etc.).
-      const device = await nav.bluetooth.requestDevice({
-        acceptAllDevices: true,
-        optionalServices: [
-          "battery_service",
-          "device_information",
-          "generic_access",
-          "generic_attribute",
-          "human_interface_device",
-          0x1108, // Headset (Classic profile UUID)
-          0x110a, // A2DP Source
-          0x110b, // A2DP Sink
-          0x111e, // Handsfree
-          0x1812, // HID over GATT
-        ],
-      });
-      // Prefer the broadcast name. If absent (common with audio devices that
-      // hide the name), fall back to the stable device id, then ask the user
-      // to label it so the slot card shows something meaningful.
-      let name: string = (device?.name as string) || "";
-      if (!name) {
-        const shortId =
-          typeof device?.id === "string" && device.id.length > 0
-            ? device.id.slice(0, 6).toUpperCase()
-            : "";
-        const suggested = shortId
-          ? `Fone ${slot} (${shortId})`
-          : `Fone ${slot}`;
-        const typed =
-          typeof window !== "undefined"
-            ? window.prompt(
-                "Não foi possível ler o nome do dispositivo. Dê um nome para identificá-lo:",
-                suggested,
-              )
-            : null;
-        name = (typed && typed.trim()) || suggested;
-      }
+      const lang = slot === "A" ? from : to;
+      const testText = audioTestPhrase(lang, slot);
+      const prepared = prepareUtterance(testText, lang);
+      const suggested = slot === "A" ? "Bluetooth do smartphone" : "Segundo fone Bluetooth";
+      const typed =
+        typeof window !== "undefined"
+          ? window.prompt(
+              "Conecte o fone nas configurações Bluetooth do smartphone e informe o nome para identificação:",
+              suggested,
+            )
+          : null;
+      const name = (typed && typed.trim()) || suggested;
       const setter = slot === "A" ? setBtDeviceA : setBtDeviceB;
       setter(name);
       saveBtHistory([name, ...btHistory]);
-      try {
-        device.addEventListener?.("gattserverdisconnected", () => {
-          setter(null);
-          toast.info(`Bluetooth ${slot} desconectado`);
-        });
-        await device.gatt?.connect?.();
-      } catch {
-        /* OS handles audio routing */
-      }
-      toast.success(`Pessoa ${slot} conectada: ${name}`);
+      speak(testText, lang, prepared);
+      toast.success(`Áudio ${slot} pronto pelo Bluetooth do smartphone`);
     } catch (e) {
-      const msg = (e as Error).message || "Pareamento cancelado";
+      const msg = (e as Error).message || "Configuração cancelada";
       if (!/cancel/i.test(msg)) toast.error(msg);
     } finally {
       setBtConnecting(null);
     }
-  }, [btHistory, saveBtHistory]);
+  }, [btHistory, from, saveBtHistory, to]);
 
 
   React.useEffect(() => {
@@ -502,14 +475,20 @@ function LiveTranslatorPage() {
   );
 
   const doTranslate = React.useCallback(
-    async (input: string, f = from, t = to, speakOut = autoSpeak) => {
+    async (
+      input: string,
+      f = from,
+      t = to,
+      speakOut = autoSpeak,
+      prepared?: SpeechSynthesisUtterance | null,
+    ) => {
       if (!input.trim()) return;
       setLoading(true);
       try {
         const out = await translateText(input, f, t);
         setTranslated(out);
         addHistory(input, out, f, t);
-        if (speakOut) speak(out, t);
+        if (speakOut) speak(out, t, prepared);
       } catch (e) {
         toast.error((e as Error).message);
       } finally {
@@ -523,7 +502,9 @@ function LiveTranslatorPage() {
   const onFinalA = React.useCallback(
     (txt: string) => {
       setText(txt);
-      doTranslate(txt, from, to, true);
+      const prepared = nextSpeakRef.current;
+      nextSpeakRef.current = null;
+      doTranslate(txt, from, to, true, prepared);
     },
     [doTranslate, from, to],
   );
@@ -532,7 +513,9 @@ function LiveTranslatorPage() {
     (txt: string) => {
       // In conversation mode, B speaks in `to` lang and we translate back to `from`
       setText(txt);
-      doTranslate(txt, to, from, true);
+      const prepared = nextSpeakRef.current;
+      nextSpeakRef.current = null;
+      doTranslate(txt, to, from, true, prepared);
     },
     [doTranslate, from, to],
   );
@@ -660,18 +643,20 @@ function LiveTranslatorPage() {
                   <Button
                     variant={dev ? "default" : "outline"}
                     size="sm"
-                    onClick={() => pairBluetooth(slot)}
+                    onClick={() => useSystemBluetooth(slot)}
                     disabled={btConnecting === slot}
                     className="gap-1"
                   >
                     {btConnecting === slot ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : dev ? (
+                      <Headphones className="h-3.5 w-3.5" />
                     ) : (
-                      <Bluetooth className="h-3.5 w-3.5" />
+                      <Smartphone className="h-3.5 w-3.5" />
                     )}
                     {dev
                       ? `Pessoa ${slot}: ${dev}`
-                      : `Parear Pessoa ${slot} (${langLabel(lang)})`}
+                      : `Usar Bluetooth ${slot} (${langLabel(lang)})`}
                   </Button>
                   {dev && (
                     <Button
@@ -727,7 +712,7 @@ function LiveTranslatorPage() {
                     key={slot}
                     className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2"
                   >
-                    <Bluetooth className="h-4 w-4 text-primary" />
+                    <Headphones className="h-4 w-4 text-primary" />
                     <div className="flex-1">
                       <p className="text-xs font-medium text-primary">
                         Pessoa {slot} · {langLabel(lang)}
@@ -738,6 +723,13 @@ function LiveTranslatorPage() {
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                       <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
                     </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => speak(audioTestPhrase(lang, slot), lang)}
+                    >
+                      Testar
+                    </Button>
                   </div>
                 );
               })}
@@ -746,8 +738,8 @@ function LiveTranslatorPage() {
 
           {(btDeviceA || btDeviceB) && (
             <p className="text-[11px] text-muted-foreground">
-              Dica: defina cada fone como saída de áudio nas configurações do
-              sistema para que cada pessoa ouça apenas a tradução no seu idioma.
+              Conecte o fone direto no Bluetooth do smartphone; o app reproduz
+              pela saída de áudio ativa do aparelho.
             </p>
           )}
 
@@ -850,6 +842,7 @@ function LiveTranslatorPage() {
               interim={srA.interim}
               onStart={() => {
                 srB.stop();
+                nextSpeakRef.current = prepareUtterance("", to);
                 srA.start();
               }}
               onStop={srA.stop}
@@ -860,6 +853,7 @@ function LiveTranslatorPage() {
               interim={srB.interim}
               onStart={() => {
                 srA.stop();
+                nextSpeakRef.current = prepareUtterance("", from);
                 srB.start();
               }}
               onStop={srB.stop}
@@ -879,7 +873,10 @@ function LiveTranslatorPage() {
               title={`Locutor — ${langLabel(from)}`}
               listening={srA.listening}
               interim={srA.interim}
-              onStart={srA.start}
+              onStart={() => {
+                nextSpeakRef.current = prepareUtterance("", to);
+                srA.start();
+              }}
               onStop={srA.stop}
             />
           </div>
@@ -905,7 +902,7 @@ function LiveTranslatorPage() {
                   size="sm"
                   onClick={() => {
                     setText(q);
-                    doTranslate(q);
+                    doTranslate(q, from, to, autoSpeak, prepareUtterance("", to));
                   }}
                 >
                   {q}
@@ -955,7 +952,7 @@ function LiveTranslatorPage() {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                doTranslate(text);
+                doTranslate(text, from, to, autoSpeak, prepareUtterance("", to));
               }
             }}
             placeholder={`Digite em ${langLabel(from)} e pressione Enter (Shift+Enter = nova linha)...`}
@@ -969,7 +966,14 @@ function LiveTranslatorPage() {
           <div className="flex gap-2">
             <Button
               variant={srA.listening ? "destructive" : "outline"}
-              onClick={srA.listening ? srA.stop : srA.start}
+              onClick={
+                srA.listening
+                  ? srA.stop
+                  : () => {
+                      nextSpeakRef.current = prepareUtterance("", to);
+                      srA.start();
+                    }
+              }
               disabled={!srA.supported}
             >
               {srA.listening ? (
@@ -983,7 +987,7 @@ function LiveTranslatorPage() {
               )}
             </Button>
             <Button
-              onClick={() => doTranslate(text)}
+              onClick={() => doTranslate(text, from, to, autoSpeak, prepareUtterance("", to))}
               disabled={loading || !text.trim()}
               className="flex-1 bg-gradient-primary shadow-glow"
             >
