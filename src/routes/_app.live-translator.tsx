@@ -421,6 +421,9 @@ function LiveTranslatorPage() {
   const useSystemBluetooth = React.useCallback((slot: Slot) => {
     try {
       setBtConnecting(slot);
+      const lang = slot === "A" ? from : to;
+      const testText = audioTestPhrase(lang, slot);
+      const prepared = prepareUtterance(testText, lang);
       const suggested = slot === "A" ? "Bluetooth do smartphone" : "Segundo fone Bluetooth";
       const typed =
         typeof window !== "undefined"
@@ -433,7 +436,7 @@ function LiveTranslatorPage() {
       const setter = slot === "A" ? setBtDeviceA : setBtDeviceB;
       setter(name);
       saveBtHistory([name, ...btHistory]);
-      speak(audioTestPhrase(slot === "A" ? from : to, slot), slot === "A" ? from : to);
+      speak(testText, lang, prepared);
       toast.success(`Áudio ${slot} pronto pelo Bluetooth do smartphone`);
     } catch (e) {
       const msg = (e as Error).message || "Configuração cancelada";
@@ -646,8 +649,10 @@ function LiveTranslatorPage() {
                   >
                     {btConnecting === slot ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : dev ? (
+                      <Headphones className="h-3.5 w-3.5" />
                     ) : (
-                      <Bluetooth className="h-3.5 w-3.5" />
+                      <Smartphone className="h-3.5 w-3.5" />
                     )}
                     {dev
                       ? `Pessoa ${slot}: ${dev}`
@@ -707,7 +712,7 @@ function LiveTranslatorPage() {
                     key={slot}
                     className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2"
                   >
-                    <Bluetooth className="h-4 w-4 text-primary" />
+                    <Headphones className="h-4 w-4 text-primary" />
                     <div className="flex-1">
                       <p className="text-xs font-medium text-primary">
                         Pessoa {slot} · {langLabel(lang)}
@@ -718,6 +723,13 @@ function LiveTranslatorPage() {
                       <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
                       <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500" />
                     </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => speak(audioTestPhrase(lang, slot), lang)}
+                    >
+                      Testar
+                    </Button>
                   </div>
                 );
               })}
