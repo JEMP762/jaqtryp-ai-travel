@@ -386,7 +386,8 @@ interface SpeechRecognition extends EventTarget {
   interimResults: boolean;
   start: () => void;
   stop: () => void;
-  onresult: ((e: { results: ArrayLike<{ 0: { transcript: string }; isFinal: boolean }>; resultIndex: number }) => void) | null;
+  maxAlternatives?: number;
+  onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string; confidence?: number }> & { isFinal: boolean; length: number }>; resultIndex: number }) => void) | null;
   onerror: ((e: { error: string }) => void) | null;
   onend: (() => void) | null;
 }
