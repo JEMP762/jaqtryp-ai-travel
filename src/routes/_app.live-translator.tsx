@@ -354,18 +354,19 @@ function speak(
   const clean = (text || "").trim();
   if (!clean) return;
 
-  // On mobile, ALWAYS use the MP3 path (/api/tts). speechSynthesis on
-  // Android Chrome routes through the notification stream, which Bluetooth
-  // headsets typically ignore. <audio> uses the media stream → Bluetooth works.
-  if (isMobile()) {
-    void playAudioFallback(clean, lang);
+  // ALWAYS use the MP3 path (/api/tts) via <audio>. The native
+  // speechSynthesis API routes through the system/notification stream on
+  // many devices, which Bluetooth headsets ignore. <audio> uses the media
+  // stream — the same path YouTube uses — so it works on every device and
+  // routes correctly to Bluetooth.
+  void playAudioFallback(clean, lang);
+  return;
+  // eslint-disable-next-line no-unreachable
+  // @ts-expect-error legacy speechSynthesis path kept below for reference
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
     return;
   }
 
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-    void playAudioFallback(clean, lang);
-    return;
-  }
 
   const synth = window.speechSynthesis;
 
