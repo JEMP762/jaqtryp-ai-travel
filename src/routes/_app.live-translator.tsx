@@ -353,8 +353,15 @@ function useSpeechRecognition(lang: string, onFinal: (text: string) => void) {
       let intr = "";
       for (let i = e.resultIndex; i < e.results.length; i++) {
         const r = e.results[i];
-        if (r.isFinal) onFinal(r[0].transcript.trim());
-        else intr += r[0].transcript;
+        if (r.isFinal) {
+          const finalText = r[0].transcript.trim();
+          rec.stop();
+          setListening(false);
+          setInterim("");
+          onFinal(finalText);
+          return;
+        }
+        intr += r[0].transcript;
       }
       setInterim(intr);
     };
