@@ -429,6 +429,10 @@ function LiveTranslatorPage() {
   const [btConnecting, setBtConnecting] = React.useState<Slot | null>(null);
   const nextSpeakRef = React.useRef<SpeechSynthesisUtterance | null>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
+  const [voiceCount, setVoiceCount] = React.useState(0);
+  const [audioReady, setAudioReady] = React.useState(false);
+  const ttsSupported =
+    typeof window !== "undefined" && "speechSynthesis" in window;
 
   // Online/offline status for limited offline mode
   const [online, setOnline] = React.useState<boolean>(() =>
