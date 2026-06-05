@@ -874,6 +874,39 @@ function LiveTranslatorPage() {
       </div>
 
 
+      {/* Audio diagnostics */}
+      <div className="mb-4 rounded-2xl border border-border bg-card/60 p-3 text-xs">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-semibold">Diagnóstico de áudio:</span>
+          <Badge variant={ttsSupported ? "default" : "destructive"}>
+            {ttsSupported ? "Voz suportada" : "Sem suporte de voz"}
+          </Badge>
+          <Badge variant={voiceCount > 0 ? "default" : "secondary"}>
+            {voiceCount} vozes carregadas
+          </Badge>
+          <Badge variant={audioReady ? "default" : "secondary"}>
+            {audioReady ? "Áudio desbloqueado" : "Áudio bloqueado"}
+          </Badge>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              unlockAudio();
+              setAudioReady(true);
+              speak(audioTestPhrase(to), to);
+            }}
+          >
+            <Volume2 className="h-3.5 w-3.5" /> Testar áudio do Chrome
+          </Button>
+        </div>
+        <p className="mt-2 text-muted-foreground">
+          O Chrome reproduz o áudio na saída ativa do smartphone. Se o teste
+          tocar no celular mas não no fone, conecte o Bluetooth nas configurações
+          do Android e reproduza um vídeo no Chrome para confirmar o roteamento
+          — o app não controla qual fone recebe o som.
+        </p>
+      </div>
+
 
       <Tabs value={mode} onValueChange={(v) => setMode(v as Mode)} className="space-y-4">
         <TabsList className="grid w-full grid-cols-3">
