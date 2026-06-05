@@ -860,7 +860,7 @@ function LiveTranslatorPage() {
               interim={srA.interim}
               onStart={() => {
                 srB.stop();
-                nextSpeakRef.current = null;
+                nextSpeakRef.current = prepareUtterance("", to, { useVoice: false });
                 srA.start();
               }}
               onStop={srA.stop}
@@ -871,7 +871,7 @@ function LiveTranslatorPage() {
               interim={srB.interim}
               onStart={() => {
                 srA.stop();
-                nextSpeakRef.current = null;
+                nextSpeakRef.current = prepareUtterance("", from, { useVoice: false });
                 srB.start();
               }}
               onStop={srB.stop}
@@ -892,7 +892,7 @@ function LiveTranslatorPage() {
               listening={srA.listening}
               interim={srA.interim}
               onStart={() => {
-                nextSpeakRef.current = null;
+                nextSpeakRef.current = prepareUtterance("", to, { useVoice: false });
                 srA.start();
               }}
               onStop={srA.stop}
