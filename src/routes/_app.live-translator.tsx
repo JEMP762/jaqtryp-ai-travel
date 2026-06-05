@@ -349,64 +349,18 @@ function speak(
   text: string,
   lang: string,
   _prepared?: SpeechSynthesisUtterance | null,
-  options: SpeakOptions = {},
+  _options: SpeakOptions = {},
 ) {
   const clean = (text || "").trim();
   if (!clean) return;
-
-  // On mobile, ALWAYS use the MP3 path (/api/tts). speechSynthesis on
-  // Android Chrome routes through the notification stream, which Bluetooth
-  // headsets typically ignore. <audio> uses the media stream → Bluetooth works.
-  if (isMobile()) {
-    void playAudioFallback(clean, lang);
-    return;
-  }
-
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) {
-    void playAudioFallback(clean, lang);
-    return;
-  }
-
-  const synth = window.speechSynthesis;
-
-  const u = _prepared || new SpeechSynthesisUtterance(clean);
-  u.text = clean;
-  u.lang = lang;
-  u.rate = 1;
-  u.volume = 1;
-  u.pitch = 1;
-  if (options.useVoice && _voicesLoaded) {
-    const v = pickVoice(synth.getVoices(), lang);
-    if (v) u.voice = v;
-  }
-  u.onstart = () => startKeepAlive();
-  u.onend = () => stopKeepAlive();
-  u.onerror = (e) => {
-    stopKeepAlive();
-    const err = (e as SpeechSynthesisErrorEvent).error;
-    if (err === "interrupted" || err === "canceled") return;
-    console.warn("speechSynthesis error:", err);
-    if (err === "synthesis-failed" && !options._retry) {
-      // Retry once with no voice selection and a fresh utterance
-      window.setTimeout(
-        () => speak(clean, lang, null, { useVoice: false, _retry: true }),
-        180,
-      );
-      return;
-    }
-    void playAudioFallback(clean, lang);
-  };
-
-  // Cancel current queue, then speak immediately (no setTimeout —
-  // Android Chrome can drop the call when scheduled outside the gesture).
-  try {
-    if (synth.speaking || synth.pending) synth.cancel();
-  } catch {
-    /* ignore */
-  }
-  if (synth.paused) synth.resume();
-  synth.speak(u);
+  // ALWAYS use the MP3 path (/api/tts) via <audio>. The native
+  // speechSynthesis API routes through the system/notification stream on
+  // many devices, which Bluetooth headsets ignore. <audio> uses the media
+  // stream — the same path YouTube uses — so it works on every device and
+  // routes correctly to Bluetooth.
+  void playAudioFallback(clean, lang);
 }
+
 
 // Minimal SpeechRecognition typing
 type SRConstructor = new () => SpeechRecognition;
