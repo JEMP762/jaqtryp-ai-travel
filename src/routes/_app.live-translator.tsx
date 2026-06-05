@@ -250,6 +250,7 @@ function stopKeepAlive() {
 
 // Audio unlock: Chrome/Android requires a user gesture before TTS works.
 let _audioUnlocked = false;
+let _fallbackAudio: HTMLAudioElement | null = null;
 function unlockAudio() {
   if (_audioUnlocked) return;
   if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
@@ -259,6 +260,25 @@ function unlockAudio() {
     _audioUnlocked = true;
   } catch {
     /* ignore */
+  }
+}
+
+async function playAudioFallback(text: string, lang: string) {
+  if (typeof window === "undefined") return;
+  const clean = text.trim().slice(0, 180);
+  if (!clean) return;
+  try {
+    _fallbackAudio?.pause();
+    const url = `/api/tts?lang=${encodeURIComponent(lang)}&text=${encodeURIComponent(clean)}`;
+    const audio = new Audio(url);
+    audio.preload = "auto";
+    _fallbackAudio = audio;
+    await audio.play();
+  } catch (err) {
+    console.warn("audio fallback failed:", err);
+    toast.error(
+      "Áudio bloqueado pelo navegador. Toque em Testar áudio novamente e confirme o volume/saída Bluetooth do celular.",
+    );
   }
 }
 
@@ -323,9 +343,7 @@ function speak(
       );
       return;
     }
-    toast.error(
-      "Áudio do Chrome falhou. Verifique se o som do navegador toca no fone Bluetooth (teste com um vídeo).",
-    );
+    void playAudioFallback(clean, lang);
   };
 
   // Cancel current queue, then speak immediately (no setTimeout —
