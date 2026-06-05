@@ -830,6 +830,7 @@ function LiveTranslatorPage() {
               interim={srA.interim}
               onStart={() => {
                 srB.stop();
+                nextSpeakRef.current = prepareUtterance("", to);
                 srA.start();
               }}
               onStop={srA.stop}
@@ -840,6 +841,7 @@ function LiveTranslatorPage() {
               interim={srB.interim}
               onStart={() => {
                 srA.stop();
+                nextSpeakRef.current = prepareUtterance("", from);
                 srB.start();
               }}
               onStop={srB.stop}
@@ -859,7 +861,10 @@ function LiveTranslatorPage() {
               title={`Locutor — ${langLabel(from)}`}
               listening={srA.listening}
               interim={srA.interim}
-              onStart={srA.start}
+              onStart={() => {
+                nextSpeakRef.current = prepareUtterance("", to);
+                srA.start();
+              }}
               onStop={srA.stop}
             />
           </div>
