@@ -292,12 +292,23 @@ async function playAudioFallback(text: string, lang: string) {
   if (typeof window === "undefined") return;
   const clean = text.trim().slice(0, 180);
   if (!clean) return;
+  let objectUrl: string | null = null;
   try {
-    const url = `/api/tts?lang=${encodeURIComponent(lang)}&text=${encodeURIComponent(clean)}`;
+    const url = `/api/public/tts?lang=${encodeURIComponent(lang)}&text=${encodeURIComponent(clean)}`;
+    const resp = await fetch(url, { credentials: "same-origin" });
+    if (!resp.ok) {
+      throw new Error(`TTS ${resp.status}`);
+    }
+    const blob = await resp.blob();
+    if (!blob.size) {
+      throw new Error("TTS empty audio");
+    }
+    objectUrl = URL.createObjectURL(blob);
     // Reuse a single Audio element — Android Chrome throttles new Audio() spam.
     if (!_fallbackAudio) {
       _fallbackAudio = new Audio();
       _fallbackAudio.preload = "auto";
+      _fallbackAudio.setAttribute("playsinline", "true");
     }
     const audio = _fallbackAudio;
     try {
@@ -305,7 +316,7 @@ async function playAudioFallback(text: string, lang: string) {
     } catch {
       /* ignore */
     }
-    audio.src = url;
+    audio.src = objectUrl;
     audio.onerror = () => {
       const code = audio.error?.code;
       console.warn("audio element error code:", code);
@@ -319,6 +330,11 @@ async function playAudioFallback(text: string, lang: string) {
     toast.error(
       "Áudio bloqueado pelo navegador. Toque em Testar áudio novamente e confirme volume/saída Bluetooth do celular.",
     );
+  } finally {
+    if (objectUrl) {
+      const urlToRevoke = objectUrl;
+      window.setTimeout(() => URL.revokeObjectURL(urlToRevoke), 5000);
+    }
   }
 }
 
