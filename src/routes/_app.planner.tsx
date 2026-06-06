@@ -282,9 +282,33 @@ function PlannerPage() {
 
         <div className="min-h-[400px] rounded-2xl border border-border bg-gradient-card p-6">
           {plan ? (
-            <div className="prose prose-sm prose-invert max-w-none">
-              <ReactMarkdown>{plan}</ReactMarkdown>
-            </div>
+            <>
+              <div className="mb-4 flex justify-end">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button size="sm" variant="outline" disabled={exporting}>
+                      {exporting ? (
+                        <><Loader2 className="h-4 w-4 animate-spin" /> {lang === "en" ? "Exporting..." : "Exportando..."}</>
+                      ) : (
+                        <><Download className="h-4 w-4" /> {lang === "en" ? "Export PDF" : "Exportar PDF"}</>
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="max-h-80 overflow-y-auto">
+                    <DropdownMenuLabel>{lang === "en" ? "Translate to" : "Traduzir para"}</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
+                    {EXPORT_LANGUAGES.map((l) => (
+                      <DropdownMenuItem key={l.code} onClick={() => handleExport(l.code)}>
+                        {l.label}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+              <div className="prose prose-sm prose-invert max-w-none">
+                <ReactMarkdown>{plan}</ReactMarkdown>
+              </div>
+            </>
           ) : (
             <div className="grid h-full place-items-center text-center text-muted-foreground">
               <div>
