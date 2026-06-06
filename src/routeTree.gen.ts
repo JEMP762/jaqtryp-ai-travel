@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as CheapFlightsRouteImport } from './routes/cheap-flights'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LiveRoomCodeRouteImport } from './routes/live-room.$code'
 import { Route as CheckoutReturnRouteImport } from './routes/checkout.return'
 import { Route as ApiTtsRouteImport } from './routes/api.tts'
 import { Route as ApiChatRouteImport } from './routes/api.chat'
@@ -29,6 +30,7 @@ import { Route as AppDashboardRouteImport } from './routes/_app.dashboard'
 import { Route as AppChatRouteImport } from './routes/_app.chat'
 import { Route as AppBillingRouteImport } from './routes/_app.billing'
 import { Route as ApiPublicTtsRouteImport } from './routes/api.public.tts'
+import { Route as ApiPublicTranslateBroadcastRouteImport } from './routes/api.public.translate-broadcast'
 import { Route as ApiPublicSttRouteImport } from './routes/api.public.stt'
 import { Route as AppAdminSettingsRouteImport } from './routes/_app.admin.settings'
 import { Route as AppAdminFinancialRouteImport } from './routes/_app.admin.financial'
@@ -56,6 +58,11 @@ const AppRoute = AppRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LiveRoomCodeRoute = LiveRoomCodeRouteImport.update({
+  id: '/live-room/$code',
+  path: '/live-room/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CheckoutReturnRoute = CheckoutReturnRouteImport.update({
@@ -133,6 +140,12 @@ const ApiPublicTtsRoute = ApiPublicTtsRouteImport.update({
   path: '/api/public/tts',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicTranslateBroadcastRoute =
+  ApiPublicTranslateBroadcastRouteImport.update({
+    id: '/api/public/translate-broadcast',
+    path: '/api/public/translate-broadcast',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicSttRoute = ApiPublicSttRouteImport.update({
   id: '/api/public/stt',
   path: '/api/public/stt',
@@ -174,9 +187,11 @@ export interface FileRoutesByFullPath {
   '/api/chat': typeof ApiChatRoute
   '/api/tts': typeof ApiTtsRoute
   '/checkout/return': typeof CheckoutReturnRoute
+  '/live-room/$code': typeof LiveRoomCodeRoute
   '/admin/financial': typeof AppAdminFinancialRoute
   '/admin/settings': typeof AppAdminSettingsRoute
   '/api/public/stt': typeof ApiPublicSttRoute
+  '/api/public/translate-broadcast': typeof ApiPublicTranslateBroadcastRoute
   '/api/public/tts': typeof ApiPublicTtsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -199,9 +214,11 @@ export interface FileRoutesByTo {
   '/api/chat': typeof ApiChatRoute
   '/api/tts': typeof ApiTtsRoute
   '/checkout/return': typeof CheckoutReturnRoute
+  '/live-room/$code': typeof LiveRoomCodeRoute
   '/admin/financial': typeof AppAdminFinancialRoute
   '/admin/settings': typeof AppAdminSettingsRoute
   '/api/public/stt': typeof ApiPublicSttRoute
+  '/api/public/translate-broadcast': typeof ApiPublicTranslateBroadcastRoute
   '/api/public/tts': typeof ApiPublicTtsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -226,9 +243,11 @@ export interface FileRoutesById {
   '/api/chat': typeof ApiChatRoute
   '/api/tts': typeof ApiTtsRoute
   '/checkout/return': typeof CheckoutReturnRoute
+  '/live-room/$code': typeof LiveRoomCodeRoute
   '/_app/admin/financial': typeof AppAdminFinancialRoute
   '/_app/admin/settings': typeof AppAdminSettingsRoute
   '/api/public/stt': typeof ApiPublicSttRoute
+  '/api/public/translate-broadcast': typeof ApiPublicTranslateBroadcastRoute
   '/api/public/tts': typeof ApiPublicTtsRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -253,9 +272,11 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/tts'
     | '/checkout/return'
+    | '/live-room/$code'
     | '/admin/financial'
     | '/admin/settings'
     | '/api/public/stt'
+    | '/api/public/translate-broadcast'
     | '/api/public/tts'
     | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -278,9 +299,11 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/tts'
     | '/checkout/return'
+    | '/live-room/$code'
     | '/admin/financial'
     | '/admin/settings'
     | '/api/public/stt'
+    | '/api/public/translate-broadcast'
     | '/api/public/tts'
     | '/api/public/payments/webhook'
   id:
@@ -304,9 +327,11 @@ export interface FileRouteTypes {
     | '/api/chat'
     | '/api/tts'
     | '/checkout/return'
+    | '/live-room/$code'
     | '/_app/admin/financial'
     | '/_app/admin/settings'
     | '/api/public/stt'
+    | '/api/public/translate-broadcast'
     | '/api/public/tts'
     | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
@@ -321,7 +346,9 @@ export interface RootRouteChildren {
   ApiChatRoute: typeof ApiChatRoute
   ApiTtsRoute: typeof ApiTtsRoute
   CheckoutReturnRoute: typeof CheckoutReturnRoute
+  LiveRoomCodeRoute: typeof LiveRoomCodeRoute
   ApiPublicSttRoute: typeof ApiPublicSttRoute
+  ApiPublicTranslateBroadcastRoute: typeof ApiPublicTranslateBroadcastRoute
   ApiPublicTtsRoute: typeof ApiPublicTtsRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
@@ -361,6 +388,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/live-room/$code': {
+      id: '/live-room/$code'
+      path: '/live-room/$code'
+      fullPath: '/live-room/$code'
+      preLoaderRoute: typeof LiveRoomCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/checkout/return': {
@@ -468,6 +502,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicTtsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/translate-broadcast': {
+      id: '/api/public/translate-broadcast'
+      path: '/api/public/translate-broadcast'
+      fullPath: '/api/public/translate-broadcast'
+      preLoaderRoute: typeof ApiPublicTranslateBroadcastRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/stt': {
       id: '/api/public/stt'
       path: '/api/public/stt'
@@ -541,7 +582,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiChatRoute: ApiChatRoute,
   ApiTtsRoute: ApiTtsRoute,
   CheckoutReturnRoute: CheckoutReturnRoute,
+  LiveRoomCodeRoute: LiveRoomCodeRoute,
   ApiPublicSttRoute: ApiPublicSttRoute,
+  ApiPublicTranslateBroadcastRoute: ApiPublicTranslateBroadcastRoute,
   ApiPublicTtsRoute: ApiPublicTtsRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }

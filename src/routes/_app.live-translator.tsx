@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import * as React from "react";
 import {
   Mic,
@@ -817,8 +817,29 @@ function LiveTranslatorPage() {
     }
   };
 
+  const navigate = useNavigate();
+  const createLiveRoom = () => {
+    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let code = "";
+    for (let i = 0; i < 6; i++) code += alphabet[Math.floor(Math.random() * alphabet.length)];
+    navigate({ to: "/live-room/$code", params: { code } });
+  };
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 md:px-10">
+      <div className="mb-4 flex flex-col gap-2 rounded-2xl border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Users className="h-4 w-4 text-primary" /> Sala ao vivo (2 ou mais pessoas)
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Crie uma sala, envie o link e cada um fala no seu idioma — o outro ouve traduzido.
+          </p>
+        </div>
+        <Button onClick={createLiveRoom} className="bg-gradient-primary shadow-glow">
+          <Users className="mr-2 h-4 w-4" /> Criar sala ao vivo
+        </Button>
+      </div>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="grid h-10 w-10 place-items-center rounded-xl bg-gradient-primary shadow-glow">
