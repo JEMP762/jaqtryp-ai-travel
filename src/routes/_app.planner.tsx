@@ -75,13 +75,9 @@ function markdownToHtml(md: string): string {
   return html;
 }
 
-function openPrintWindow(title: string, markdown: string) {
-  const w = window.open("", "_blank");
-  if (!w) {
-    toast.error("Permita pop-ups para exportar");
-    return;
-  }
+function renderPrintWindow(w: Window, title: string, markdown: string) {
   const body = markdownToHtml(markdown);
+  w.document.open();
   w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
 <style>
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;max-width:780px;margin:40px auto;padding:0 24px;color:#111;line-height:1.55}
@@ -95,9 +91,15 @@ function openPrintWindow(title: string, markdown: string) {
 </style></head><body>
 <h1>${title}</h1>
 ${body}
-<script>window.onload=()=>setTimeout(()=>window.print(),200);</script>
+<script>setTimeout(()=>window.print(),300);</script>
 </body></html>`);
   w.document.close();
+}
+
+function loadingHtml(msg: string) {
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${msg}</title>
+<style>body{font-family:-apple-system,sans-serif;display:grid;place-items:center;height:100vh;margin:0;color:#555}</style>
+</head><body><div>${msg}…</div></body></html>`;
 }
 
 export const Route = createFileRoute("/_app/planner")({
@@ -130,10 +132,20 @@ function PlannerPage() {
 
   const handleExport = async (targetLang: string) => {
     if (!plan) return;
+    // Open the window SYNCHRONOUSLY (inside the click handler) so the
+    // browser does not treat the later document.write as a popup.
+    const w = window.open("", "_blank");
+    if (!w) {
+      toast.error("Permita pop-ups para exportar");
+      return;
+    }
+    w.document.write(loadingHtml(lang === "en" ? "Preparing export" : "Preparando exportação"));
     setExporting(true);
     try {
       let content = plan;
-      let title = destination ? `${destination} — ${lang === "en" ? "Itinerary" : "Roteiro"}` : (lang === "en" ? "Itinerary" : "Roteiro");
+      const title = destination
+        ? `${destination} — ${lang === "en" ? "Itinerary" : "Roteiro"}`
+        : (lang === "en" ? "Itinerary" : "Roteiro");
       if (targetLang !== "original") {
         const system = `You are a professional translator. Translate the following travel itinerary markdown to ${targetLang}. Preserve ALL markdown formatting (##, ###, -, **bold**), numbers, prices, currency symbols, and proper nouns (city/place names). Output ONLY the translated markdown, no extra commentary.`;
         const resp = await fetch("/api/ai", {
@@ -145,8 +157,9 @@ function PlannerPage() {
         if (!resp.ok) throw new Error(data.error || "Erro ao traduzir");
         content = data.text as string;
       }
-      openPrintWindow(title, content);
+      renderPrintWindow(w, title, content);
     } catch (e) {
+      try { w.close(); } catch {}
       toast.error((e as Error).message);
     } finally {
       setExporting(false);
