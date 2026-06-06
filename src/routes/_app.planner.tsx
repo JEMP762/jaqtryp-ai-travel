@@ -126,6 +126,32 @@ function PlannerPage() {
   const [interests, setInterests] = React.useState("");
   const [loading, setLoading] = React.useState(false);
   const [plan, setPlan] = React.useState("");
+  const [exporting, setExporting] = React.useState(false);
+
+  const handleExport = async (targetLang: string) => {
+    if (!plan) return;
+    setExporting(true);
+    try {
+      let content = plan;
+      let title = destination ? `${destination} — ${lang === "en" ? "Itinerary" : "Roteiro"}` : (lang === "en" ? "Itinerary" : "Roteiro");
+      if (targetLang !== "original") {
+        const system = `You are a professional translator. Translate the following travel itinerary markdown to ${targetLang}. Preserve ALL markdown formatting (##, ###, -, **bold**), numbers, prices, currency symbols, and proper nouns (city/place names). Output ONLY the translated markdown, no extra commentary.`;
+        const resp = await fetch("/api/ai", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ system, prompt: plan }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || "Erro ao traduzir");
+        content = data.text as string;
+      }
+      openPrintWindow(title, content);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setExporting(false);
+    }
+  };
 
 
   const generate = async () => {
