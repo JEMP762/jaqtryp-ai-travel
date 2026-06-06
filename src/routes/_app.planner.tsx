@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Download, Loader2, Sparkles } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Download, Loader2, Sparkles, Lock } from "lucide-react";
 import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
@@ -23,6 +23,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useI18n } from "@/lib/i18n/I18nProvider";
+import { supabase } from "@/integrations/supabase/client";
+import { getStripeEnvironment } from "@/lib/stripe";
 
 const EXPORT_LANGUAGES = [
   { code: "original", label: "Idioma original" },
