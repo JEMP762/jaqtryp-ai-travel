@@ -340,11 +340,33 @@ function PlannerPage() {
                   <DropdownMenuContent align="end" className="max-h-80 overflow-y-auto">
                     <DropdownMenuLabel>{lang === "en" ? "Translate to" : "Traduzir para"}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {EXPORT_LANGUAGES.map((l) => (
-                      <DropdownMenuItem key={l.code} onClick={() => handleExport(l.code)}>
-                        {l.label}
-                      </DropdownMenuItem>
-                    ))}
+                    {EXPORT_LANGUAGES.map((l) => {
+                      const locked = !isPro && l.code !== "original";
+                      return (
+                        <DropdownMenuItem
+                          key={l.code}
+                          onClick={locked ? undefined : () => handleExport(l.code)}
+                          className={locked ? "cursor-not-allowed opacity-60" : undefined}
+                        >
+                          <span className="flex flex-1 items-center justify-between gap-4">
+                            {l.label}
+                            {locked && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
+                          </span>
+                        </DropdownMenuItem>
+                      );
+                    })}
+                    {isPro === false && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <div className="px-2 py-2">
+                          <Link to="/billing" className="block w-full">
+                            <Button size="sm" className="w-full bg-gradient-primary shadow-glow text-xs">
+                              {lang === "en" ? "Upgrade to export translations" : "Faça upgrade para exportar traduções"}
+                            </Button>
+                          </Link>
+                        </div>
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
