@@ -47,12 +47,19 @@ export const Route = createFileRoute("/api/public/stt")({
             headers: { "content-type": "application/json" },
           });
         }
+        if (audio.size < 1200) {
+          return new Response(JSON.stringify({ error: "Audio too short" }), {
+            status: 400,
+            headers: { "content-type": "application/json" },
+          });
+        }
 
         const langRaw = (inForm.get("lang") as string) || "";
         const langCode = LANG_MAP[langRaw];
 
         const apiForm = new FormData();
-        apiForm.append("file", audio, "audio.webm");
+        const filename = audio instanceof File && audio.name ? audio.name : "audio.webm";
+        apiForm.append("file", audio, filename);
         apiForm.append("model_id", "scribe_v2");
         apiForm.append("tag_audio_events", "false");
         apiForm.append("diarize", "false");

@@ -389,6 +389,7 @@ function useSpeechRecognition(lang: string, onFinal: (text: string) => void) {
   const streamRef = React.useRef<MediaStream | null>(null);
   const chunksRef = React.useRef<Blob[]>([]);
   const cancelledRef = React.useRef(false);
+  const mimeRef = React.useRef("");
   const supported =
     typeof window !== "undefined" &&
     typeof navigator !== "undefined" &&
@@ -405,6 +406,7 @@ function useSpeechRecognition(lang: string, onFinal: (text: string) => void) {
       toast.error("Gravação de voz não suportada neste navegador.");
       return;
     }
+    if (recRef.current && recRef.current.state !== "inactive") return;
     try {
       cancelledRef.current = false;
       chunksRef.current = [];
@@ -431,6 +433,7 @@ function useSpeechRecognition(lang: string, onFinal: (text: string) => void) {
           break;
         }
       }
+      mimeRef.current = mime;
 
       const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
       recRef.current = rec;
@@ -441,6 +444,7 @@ function useSpeechRecognition(lang: string, onFinal: (text: string) => void) {
 
       rec.onerror = () => {
         toast.error("Falha ao gravar áudio do microfone.");
+        cancelledRef.current = true;
         stopTracks();
         setListening(false);
         setInterim("");
@@ -448,27 +452,31 @@ function useSpeechRecognition(lang: string, onFinal: (text: string) => void) {
 
       rec.onstop = async () => {
         setListening(false);
-        setInterim("");
+        setInterim("Preparando áudio completo…");
         stopTracks();
+        recRef.current = null;
 
         if (cancelledRef.current) {
           chunksRef.current = [];
+          setInterim("");
           return;
         }
 
-        const blobType = mime || "audio/webm";
+        const blobType = mimeRef.current || rec.mimeType || "audio/webm";
         const blob = new Blob(chunksRef.current, { type: blobType });
         chunksRef.current = [];
 
         if (blob.size < 1200) {
           // ~too short to be useful
+          setInterim("");
           return;
         }
 
         try {
           setInterim("Transcrevendo…");
           const fd = new FormData();
-          fd.append("audio", blob, "audio.webm");
+          const ext = blobType.includes("mp4") ? "m4a" : blobType.includes("ogg") ? "ogg" : "webm";
+          fd.append("audio", blob, `audio.${ext}`);
           fd.append("lang", lang);
           const resp = await fetch("/api/public/stt", { method: "POST", body: fd });
           setInterim("");
@@ -486,14 +494,27 @@ function useSpeechRecognition(lang: string, onFinal: (text: string) => void) {
         }
       };
 
-      // Collect data periodically so a crash doesn't lose audio.
-      rec.start(1000);
+      // Do not pass a timeslice here. Some mobile browsers create chunked WebM
+      // files that STT providers decode only up to the first chunk, which makes
+      // long dialogue look like it was cut. A single blob is safer and complete.
+      rec.start();
       setListening(true);
-      setInterim("Gravando…");
+      setInterim("Gravando diálogo…");
     } catch (err) {
-      const msg = (err as Error).message || "Permissão de microfone negada";
+      const error = err as DOMException;
+      const msg =
+        error.name === "NotAllowedError"
+          ? "Permissão negada. Libere o microfone no navegador."
+          : error.name === "NotFoundError"
+            ? "Nenhum microfone encontrado."
+            : error.name === "NotReadableError"
+              ? "Microfone em uso por outro app."
+              : error.message || "Permissão de microfone negada";
       toast.error(`Microfone: ${msg}`);
       stopTracks();
+      recRef.current = null;
+      setListening(false);
+      setInterim("");
     }
   }, [lang, onFinal, supported, stopTracks]);
 
@@ -501,6 +522,8 @@ function useSpeechRecognition(lang: string, onFinal: (text: string) => void) {
     const rec = recRef.current;
     if (rec && rec.state !== "inactive") {
       try {
+        setInterim("Finalizando gravação…");
+        rec.requestData();
         rec.stop();
       } catch {
         /* noop */
@@ -518,6 +541,7 @@ function useSpeechRecognition(lang: string, onFinal: (text: string) => void) {
       const rec = recRef.current;
       if (rec && rec.state !== "inactive") {
         try {
+          rec.requestData();
           rec.stop();
         } catch {
           /* noop */
