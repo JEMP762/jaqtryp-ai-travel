@@ -1,0 +1,568 @@
+import { createFileRoute, Link } from "@tanstack/react-router";
+import * as React from "react";
+import { Mic, Square, Copy, Share2, Users, Volume2, Loader2, ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
+import type { RealtimeChannel } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
+
+export const Route = createFileRoute("/live-room/$code")({
+  component: LiveRoomPage,
+});
+
+const LANGS = [
+  { code: "pt-BR", label: "Português (BR)", flag: "🇧🇷" },
+  { code: "en-US", label: "English (US)", flag: "🇺🇸" },
+  { code: "es-ES", label: "Español", flag: "🇪🇸" },
+  { code: "fr-FR", label: "Français", flag: "🇫🇷" },
+  { code: "it-IT", label: "Italiano", flag: "🇮🇹" },
+  { code: "de-DE", label: "Deutsch", flag: "🇩🇪" },
+  { code: "ja-JP", label: "日本語", flag: "🇯🇵" },
+  { code: "zh-CN", label: "中文", flag: "🇨🇳" },
+  { code: "ko-KR", label: "한국어", flag: "🇰🇷" },
+  { code: "ar-SA", label: "العربية", flag: "🇸🇦" },
+  { code: "ru-RU", label: "Русский", flag: "🇷🇺" },
+];
+
+function langLabel(c: string) {
+  return LANGS.find((l) => l.code === c)?.label ?? c;
+}
+function langFlag(c: string) {
+  return LANGS.find((l) => l.code === c)?.flag ?? "🌐";
+}
+
+type Presence = { userId: string; lang: string; name: string };
+type IncomingMessage = {
+  id: string;
+  fromUserId: string;
+  fromName: string;
+  fromLang: string;
+  originalText: string;
+  perRecipient: Record<string, { text: string; audio?: string; lang: string }>;
+  ts: number;
+};
+type RenderedMessage = {
+  id: string;
+  fromUserId: string;
+  fromName: string;
+  fromLang: string;
+  originalText: string;
+  translatedText: string;
+  audio?: string;
+  ts: number;
+  mine: boolean;
+};
+
+function getOrCreateUserId() {
+  if (typeof window === "undefined") return "anon";
+  const k = "jaq-live-room-uid";
+  let id = sessionStorage.getItem(k);
+  if (!id) {
+    id = crypto.randomUUID();
+    sessionStorage.setItem(k, id);
+  }
+  return id;
+}
+function getOrCreateName() {
+  if (typeof window === "undefined") return "Convidado";
+  const k = "jaq-live-room-name";
+  return localStorage.getItem(k) || "";
+}
+function saveName(n: string) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem("jaq-live-room-name", n);
+}
+
+function LiveRoomPage() {
+  const { code } = Route.useParams();
+  const [myId] = React.useState(getOrCreateUserId);
+  const [myName, setMyName] = React.useState(getOrCreateName);
+  const [myLang, setMyLang] = React.useState("pt-BR");
+  const [joined, setJoined] = React.useState(false);
+  const [participants, setParticipants] = React.useState<Presence[]>([]);
+  const [messages, setMessages] = React.useState<RenderedMessage[]>([]);
+  const [listening, setListening] = React.useState(false);
+  const [busy, setBusy] = React.useState(false);
+  const [status, setStatus] = React.useState("");
+
+  const channelRef = React.useRef<RealtimeChannel | null>(null);
+  const recRef = React.useRef<MediaRecorder | null>(null);
+  const streamRef = React.useRef<MediaStream | null>(null);
+  const chunksRef = React.useRef<Blob[]>([]);
+  const mimeRef = React.useRef("");
+  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+  const participantsRef = React.useRef<Presence[]>([]);
+
+  React.useEffect(() => {
+    participantsRef.current = participants;
+  }, [participants]);
+
+  React.useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+  }, [messages]);
+
+  const unlockAudio = React.useCallback(() => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+      audioRef.current.setAttribute("playsinline", "true");
+    }
+  }, []);
+
+  const playBase64 = React.useCallback((b64: string) => {
+    if (!audioRef.current) audioRef.current = new Audio();
+    audioRef.current.src = `data:audio/mpeg;base64,${b64}`;
+    audioRef.current.play().catch(() => {
+      toast.info("Toque em qualquer lugar para liberar o áudio");
+    });
+  }, []);
+
+  // Join the realtime channel
+  React.useEffect(() => {
+    if (!joined) return;
+    const channel = supabase.channel(`live-room:${code}`, {
+      config: { presence: { key: myId }, broadcast: { self: false, ack: false } },
+    });
+
+    channel.on("presence", { event: "sync" }, () => {
+      const state = channel.presenceState() as Record<string, Array<Presence>>;
+      const list: Presence[] = [];
+      for (const arr of Object.values(state)) {
+        if (arr[0]) list.push(arr[0]);
+      }
+      setParticipants(list);
+    });
+
+    channel.on("broadcast", { event: "message" }, ({ payload }) => {
+      const msg = payload as IncomingMessage;
+      const forMe = msg.perRecipient[myId];
+      const translated = forMe?.text ?? msg.originalText;
+      const audio = forMe?.audio;
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: msg.id,
+          fromUserId: msg.fromUserId,
+          fromName: msg.fromName,
+          fromLang: msg.fromLang,
+          originalText: msg.originalText,
+          translatedText: translated,
+          audio,
+          ts: msg.ts,
+          mine: false,
+        },
+      ]);
+      if (audio) playBase64(audio);
+    });
+
+    channel.subscribe(async (st) => {
+      if (st === "SUBSCRIBED") {
+        await channel.track({ userId: myId, lang: myLang, name: myName || "Convidado" });
+      }
+    });
+    channelRef.current = channel;
+    return () => {
+      channel.unsubscribe();
+      supabase.removeChannel(channel);
+      channelRef.current = null;
+    };
+  }, [joined, code, myId, myLang, myName, playBase64]);
+
+  // Update presence when language/name changes
+  React.useEffect(() => {
+    if (!joined || !channelRef.current) return;
+    channelRef.current.track({ userId: myId, lang: myLang, name: myName || "Convidado" });
+  }, [joined, myId, myLang, myName]);
+
+  const inviteUrl = typeof window !== "undefined" ? `${window.location.origin}/live-room/${code}` : "";
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteUrl);
+      toast.success("Link copiado!");
+    } catch {
+      toast.error("Não foi possível copiar");
+    }
+  };
+  const share = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: "Tradução ao vivo Jaqtryp",
+          text: `Entra na minha sala de tradução ao vivo. Código: ${code}`,
+          url: inviteUrl,
+        });
+      } catch {
+        /* user cancelled */
+      }
+    } else {
+      copyLink();
+    }
+  };
+
+  const stopTracks = () => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+  };
+
+  const startRecording = async () => {
+    unlockAudio();
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+      streamRef.current = stream;
+      const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/mp4"];
+      let mime = "";
+      for (const c of candidates) {
+        if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported(c)) {
+          mime = c;
+          break;
+        }
+      }
+      mimeRef.current = mime;
+      chunksRef.current = [];
+      const rec = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      rec.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      rec.onerror = () => {
+        toast.error("Erro no microfone");
+        stopTracks();
+        setListening(false);
+      };
+      rec.onstop = async () => {
+        setListening(false);
+        stopTracks();
+        const blobType = mimeRef.current || rec.mimeType || "audio/webm";
+        const blob = new Blob(chunksRef.current, { type: blobType });
+        chunksRef.current = [];
+        recRef.current = null;
+        if (blob.size < 1200) {
+          setStatus("");
+          return;
+        }
+        await processAudio(blob, blobType);
+      };
+      recRef.current = rec;
+      rec.start();
+      setListening(true);
+      setStatus("Gravando…");
+    } catch (e) {
+      const err = e as DOMException;
+      if (err.name === "NotAllowedError") toast.error("Permissão de microfone negada");
+      else toast.error(`Microfone indisponível: ${err.message}`);
+    }
+  };
+
+  const stopRecording = () => {
+    if (recRef.current && recRef.current.state !== "inactive") {
+      setStatus("Finalizando…");
+      try {
+        recRef.current.requestData();
+      } catch {
+        /* ignore */
+      }
+      recRef.current.stop();
+    }
+  };
+
+  const processAudio = async (blob: Blob, blobType: string) => {
+    setBusy(true);
+    setStatus("Transcrevendo…");
+    try {
+      const fd = new FormData();
+      const ext = blobType.includes("mp4") ? "m4a" : blobType.includes("ogg") ? "ogg" : "webm";
+      fd.append("audio", blob, `audio.${ext}`);
+      fd.append("lang", myLang);
+      const sttResp = await fetch("/api/public/stt", { method: "POST", body: fd });
+      if (!sttResp.ok) {
+        const e = await sttResp.text();
+        throw new Error(`STT: ${e.slice(0, 120)}`);
+      }
+      const { text } = (await sttResp.json()) as { text?: string };
+      const original = (text || "").trim();
+      if (!original) {
+        setStatus("");
+        toast.info("Nada foi captado");
+        return;
+      }
+
+      const others = participantsRef.current.filter((p) => p.userId !== myId);
+      if (others.length === 0) {
+        // No one else: just show locally
+        const id = crypto.randomUUID();
+        setMessages((prev) => [
+          ...prev,
+          {
+            id,
+            fromUserId: myId,
+            fromName: myName || "Eu",
+            fromLang: myLang,
+            originalText: original,
+            translatedText: original,
+            ts: Date.now(),
+            mine: true,
+          },
+        ]);
+        setStatus("Aguardando convidado entrar para traduzir…");
+        toast.info("Compartilhe o link para começar a traduzir");
+        return;
+      }
+
+      setStatus("Traduzindo e gerando voz…");
+      const tResp = await fetch("/api/public/translate-broadcast", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fromLang: myLang,
+          text: original,
+          withAudio: true,
+          targets: others.map((p) => ({ userId: p.userId, lang: p.lang })),
+        }),
+      });
+      if (!tResp.ok) {
+        const e = await tResp.text();
+        throw new Error(`Translate: ${e.slice(0, 120)}`);
+      }
+      const data = (await tResp.json()) as {
+        perRecipient: Record<string, { text: string; audio?: string; lang: string }>;
+      };
+
+      const id = crypto.randomUUID();
+      const ts = Date.now();
+      const msg: IncomingMessage = {
+        id,
+        fromUserId: myId,
+        fromName: myName || "Eu",
+        fromLang: myLang,
+        originalText: original,
+        perRecipient: data.perRecipient,
+        ts,
+      };
+
+      // Broadcast to others
+      await channelRef.current?.send({ type: "broadcast", event: "message", payload: msg });
+
+      // Add to my own view (translated to my own lang would be original — show original)
+      setMessages((prev) => [
+        ...prev,
+        {
+          id,
+          fromUserId: myId,
+          fromName: myName || "Eu",
+          fromLang: myLang,
+          originalText: original,
+          translatedText: original,
+          ts,
+          mine: true,
+        },
+      ]);
+      setStatus("");
+    } catch (e) {
+      toast.error((e as Error).message);
+      setStatus("");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Join screen
+  if (!joined) {
+    return (
+      <div className="grid min-h-screen place-items-center bg-background px-4">
+        <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-glow">
+          <div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
+            <Link to="/" className="hover:text-foreground">
+              <ArrowLeft className="inline h-4 w-4" /> Início
+            </Link>
+          </div>
+          <h1 className="text-2xl font-bold">Entrar na sala</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Código: <span className="font-mono font-semibold text-foreground">{code}</span>
+          </p>
+
+          <div className="mt-6 space-y-4">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">Seu nome</label>
+              <input
+                value={myName}
+                onChange={(e) => setMyName(e.target.value)}
+                placeholder="Ex.: Jose"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                Idioma que você fala
+              </label>
+              <Select value={myLang} onValueChange={setMyLang}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {LANGS.map((l) => (
+                    <SelectItem key={l.code} value={l.code}>
+                      {l.flag} {l.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              className="w-full bg-gradient-primary shadow-glow"
+              onClick={() => {
+                if (myName.trim()) saveName(myName.trim());
+                unlockAudio();
+                setJoined(true);
+              }}
+            >
+              Entrar
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const others = participants.filter((p) => p.userId !== myId);
+
+  return (
+    <div className="mx-auto flex h-[100dvh] max-w-3xl flex-col bg-background px-4 py-4">
+      {/* Header */}
+      <div className="rounded-2xl border border-border bg-card/60 p-4">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <div className="text-xs text-muted-foreground">Sala</div>
+            <div className="font-mono text-lg font-bold tracking-wider">{code}</div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={copyLink}>
+              <Copy className="mr-1 h-3.5 w-3.5" /> Copiar link
+            </Button>
+            <Button size="sm" className="bg-gradient-primary" onClick={share}>
+              <Share2 className="mr-1 h-3.5 w-3.5" /> Convidar
+            </Button>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
+          <Users className="h-3.5 w-3.5 text-muted-foreground" />
+          {participants.length === 0 ? (
+            <span className="text-muted-foreground">Conectando…</span>
+          ) : (
+            participants.map((p) => (
+              <span
+                key={p.userId}
+                className={cn(
+                  "rounded-full border px-2 py-0.5",
+                  p.userId === myId
+                    ? "border-primary bg-primary/15 text-primary"
+                    : "border-border bg-background text-muted-foreground",
+                )}
+              >
+                {langFlag(p.lang)} {p.name}
+                {p.userId === myId ? " (você)" : ""}
+              </span>
+            ))
+          )}
+        </div>
+        {others.length === 0 && (
+          <div className="mt-2 text-xs text-amber-500">
+            Aguardando alguém entrar com o link…
+          </div>
+        )}
+        <div className="mt-3">
+          <Select value={myLang} onValueChange={setMyLang}>
+            <SelectTrigger className="h-9 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {LANGS.map((l) => (
+                <SelectItem key={l.code} value={l.code}>
+                  {l.flag} {l.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div ref={scrollRef} className="flex-1 space-y-3 overflow-y-auto py-4">
+        {messages.length === 0 && (
+          <div className="grid h-full place-items-center text-center text-sm text-muted-foreground">
+            <div>
+              <Volume2 className="mx-auto mb-2 h-8 w-8 opacity-50" />
+              Aperte o microfone e fale no seu idioma.
+              <br />A outra pessoa vai ouvir e ler na língua dela.
+            </div>
+          </div>
+        )}
+        {messages.map((m) => (
+          <div
+            key={m.id}
+            className={cn(
+              "flex flex-col gap-1 rounded-2xl border p-3",
+              m.mine ? "ml-8 border-primary/30 bg-primary/10" : "mr-8 border-border bg-card",
+            )}
+          >
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>
+                {langFlag(m.fromLang)} <span className="font-medium">{m.fromName}</span>
+              </span>
+              {m.audio && (
+                <button
+                  className="text-primary hover:underline"
+                  onClick={() => playBase64(m.audio!)}
+                >
+                  <Volume2 className="inline h-3 w-3" /> Reouvir
+                </button>
+              )}
+            </div>
+            {!m.mine && m.originalText !== m.translatedText && (
+              <div className="text-xs italic text-muted-foreground">{m.originalText}</div>
+            )}
+            <div className="text-sm">{m.translatedText}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Mic */}
+      <div className="border-t border-border pt-4">
+        {status && (
+          <div className="mb-2 text-center text-xs text-muted-foreground">{status}</div>
+        )}
+        <div className="flex justify-center">
+          <Button
+            size="lg"
+            disabled={busy}
+            onClick={listening ? stopRecording : startRecording}
+            className={cn(
+              "h-16 w-16 rounded-full shadow-glow",
+              listening ? "bg-red-500 hover:bg-red-600" : "bg-gradient-primary",
+            )}
+          >
+            {busy ? (
+              <Loader2 className="h-6 w-6 animate-spin" />
+            ) : listening ? (
+              <Square className="h-6 w-6" />
+            ) : (
+              <Mic className="h-6 w-6" />
+            )}
+          </Button>
+        </div>
+        <div className="mt-2 text-center text-xs text-muted-foreground">
+          {listening ? "Toque para parar" : "Toque para falar"}
+        </div>
+      </div>
+    </div>
+  );
+}
