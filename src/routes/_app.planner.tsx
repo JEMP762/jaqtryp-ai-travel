@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { Download, Loader2, Sparkles } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { Download, Loader2, Sparkles, Lock } from "lucide-react";
 import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
@@ -23,6 +23,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useI18n } from "@/lib/i18n/I18nProvider";
+import { supabase } from "@/integrations/supabase/client";
+import { getStripeEnvironment } from "@/lib/stripe";
 
 const EXPORT_LANGUAGES = [
   { code: "original", label: "Idioma original" },
@@ -129,6 +131,34 @@ function PlannerPage() {
   const [loading, setLoading] = React.useState(false);
   const [plan, setPlan] = React.useState("");
   const [exporting, setExporting] = React.useState(false);
+  const [isPro, setIsPro] = React.useState<boolean | null>(null);
+
+  React.useEffect(() => {
+    async function checkSubscription() {
+      try {
+        const env = getStripeEnvironment();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { setIsPro(false); return; }
+        const { data } = await supabase
+          .from("subscriptions")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("environment", env)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const active = data && (
+          (["active", "trialing", "past_due"].includes(data.status) &&
+            (!data.current_period_end || new Date(data.current_period_end) > new Date())) ||
+          (data.status === "canceled" && data.current_period_end && new Date(data.current_period_end) > new Date())
+        );
+        setIsPro(!!active);
+      } catch {
+        setIsPro(false);
+      }
+    }
+    checkSubscription();
+  }, []);
 
   const handleExport = async (targetLang: string) => {
     if (!plan) return;
@@ -310,11 +340,33 @@ function PlannerPage() {
                   <DropdownMenuContent align="end" className="max-h-80 overflow-y-auto">
                     <DropdownMenuLabel>{lang === "en" ? "Translate to" : "Traduzir para"}</DropdownMenuLabel>
                     <DropdownMenuSeparator />
-                    {EXPORT_LANGUAGES.map((l) => (
-                      <DropdownMenuItem key={l.code} onClick={() => handleExport(l.code)}>
-                        {l.label}
-                      </DropdownMenuItem>
-                    ))}
+                    {EXPORT_LANGUAGES.map((l) => {
+                      const locked = !isPro && l.code !== "original";
+                      return (
+                        <DropdownMenuItem
+                          key={l.code}
+                          onClick={locked ? undefined : () => handleExport(l.code)}
+                          className={locked ? "cursor-not-allowed opacity-60" : undefined}
+                        >
+                          <span className="flex flex-1 items-center justify-between gap-4">
+                            {l.label}
+                            {locked && <Lock className="h-3.5 w-3.5 text-muted-foreground" />}
+                          </span>
+                        </DropdownMenuItem>
+                      );
+                    })}
+                    {isPro === false && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <div className="px-2 py-2">
+                          <Link to="/billing" className="block w-full">
+                            <Button size="sm" className="w-full bg-gradient-primary shadow-glow text-xs">
+                              {lang === "en" ? "Upgrade to export translations" : "Faça upgrade para exportar traduções"}
+                            </Button>
+                          </Link>
+                        </div>
+                      </>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
