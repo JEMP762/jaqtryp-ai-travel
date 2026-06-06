@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Loader2, Sparkles } from "lucide-react";
+import { Download, Loader2, Sparkles } from "lucide-react";
 import * as React from "react";
 import ReactMarkdown from "react-markdown";
 import { toast } from "sonner";
@@ -14,7 +14,91 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useI18n } from "@/lib/i18n/I18nProvider";
+
+const EXPORT_LANGUAGES = [
+  { code: "original", label: "Idioma original" },
+  { code: "Portuguese (Brazil)", label: "Português (BR)" },
+  { code: "English", label: "English" },
+  { code: "Spanish", label: "Español" },
+  { code: "French", label: "Français" },
+  { code: "Italian", label: "Italiano" },
+  { code: "German", label: "Deutsch" },
+  { code: "Japanese", label: "日本語" },
+  { code: "Chinese (Simplified)", label: "中文 (简体)" },
+  { code: "Korean", label: "한국어" },
+  { code: "Dutch", label: "Nederlands" },
+  { code: "Russian", label: "Русский" },
+  { code: "Arabic", label: "العربية" },
+];
+
+function markdownToHtml(md: string): string {
+  // Minimal markdown → HTML for print export
+  const escape = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const lines = md.split("\n");
+  let html = "";
+  let inList = false;
+  for (const raw of lines) {
+    const line = raw.trimEnd();
+    if (/^###\s+/.test(line)) {
+      if (inList) { html += "</ul>"; inList = false; }
+      html += `<h3>${escape(line.replace(/^###\s+/, ""))}</h3>`;
+    } else if (/^##\s+/.test(line)) {
+      if (inList) { html += "</ul>"; inList = false; }
+      html += `<h2>${escape(line.replace(/^##\s+/, ""))}</h2>`;
+    } else if (/^#\s+/.test(line)) {
+      if (inList) { html += "</ul>"; inList = false; }
+      html += `<h1>${escape(line.replace(/^#\s+/, ""))}</h1>`;
+    } else if (/^[-*]\s+/.test(line)) {
+      if (!inList) { html += "<ul>"; inList = true; }
+      let item = escape(line.replace(/^[-*]\s+/, ""));
+      item = item.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      html += `<li>${item}</li>`;
+    } else if (line.trim() === "") {
+      if (inList) { html += "</ul>"; inList = false; }
+    } else {
+      if (inList) { html += "</ul>"; inList = false; }
+      let p = escape(line).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+      html += `<p>${p}</p>`;
+    }
+  }
+  if (inList) html += "</ul>";
+  return html;
+}
+
+function openPrintWindow(title: string, markdown: string) {
+  const w = window.open("", "_blank");
+  if (!w) {
+    toast.error("Permita pop-ups para exportar");
+    return;
+  }
+  const body = markdownToHtml(markdown);
+  w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title}</title>
+<style>
+  body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;max-width:780px;margin:40px auto;padding:0 24px;color:#111;line-height:1.55}
+  h1{font-size:26px;margin:0 0 8px;border-bottom:2px solid #eee;padding-bottom:8px}
+  h2{font-size:20px;margin:24px 0 8px;color:#1e40af}
+  h3{font-size:16px;margin:18px 0 6px}
+  p{margin:6px 0}
+  ul{margin:6px 0 12px 22px}
+  li{margin:3px 0}
+  @media print { body { margin: 0; } }
+</style></head><body>
+<h1>${title}</h1>
+${body}
+<script>window.onload=()=>setTimeout(()=>window.print(),200);</script>
+</body></html>`);
+  w.document.close();
+}
 
 export const Route = createFileRoute("/_app/planner")({
   component: PlannerPage,
