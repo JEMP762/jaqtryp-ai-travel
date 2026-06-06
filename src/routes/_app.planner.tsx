@@ -132,10 +132,20 @@ function PlannerPage() {
 
   const handleExport = async (targetLang: string) => {
     if (!plan) return;
+    // Open the window SYNCHRONOUSLY (inside the click handler) so the
+    // browser does not treat the later document.write as a popup.
+    const w = window.open("", "_blank");
+    if (!w) {
+      toast.error("Permita pop-ups para exportar");
+      return;
+    }
+    w.document.write(loadingHtml(lang === "en" ? "Preparing export" : "Preparando exportação"));
     setExporting(true);
     try {
       let content = plan;
-      let title = destination ? `${destination} — ${lang === "en" ? "Itinerary" : "Roteiro"}` : (lang === "en" ? "Itinerary" : "Roteiro");
+      const title = destination
+        ? `${destination} — ${lang === "en" ? "Itinerary" : "Roteiro"}`
+        : (lang === "en" ? "Itinerary" : "Roteiro");
       if (targetLang !== "original") {
         const system = `You are a professional translator. Translate the following travel itinerary markdown to ${targetLang}. Preserve ALL markdown formatting (##, ###, -, **bold**), numbers, prices, currency symbols, and proper nouns (city/place names). Output ONLY the translated markdown, no extra commentary.`;
         const resp = await fetch("/api/ai", {
@@ -147,8 +157,9 @@ function PlannerPage() {
         if (!resp.ok) throw new Error(data.error || "Erro ao traduzir");
         content = data.text as string;
       }
-      openPrintWindow(title, content);
+      renderPrintWindow(w, title, content);
     } catch (e) {
+      try { w.close(); } catch {}
       toast.error((e as Error).message);
     } finally {
       setExporting(false);
