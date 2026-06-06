@@ -131,6 +131,34 @@ function PlannerPage() {
   const [loading, setLoading] = React.useState(false);
   const [plan, setPlan] = React.useState("");
   const [exporting, setExporting] = React.useState(false);
+  const [isPro, setIsPro] = React.useState<boolean | null>(null);
+
+  React.useEffect(() => {
+    async function checkSubscription() {
+      try {
+        const env = getStripeEnvironment();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { setIsPro(false); return; }
+        const { data } = await supabase
+          .from("subscriptions")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("environment", env)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const active = data && (
+          (["active", "trialing", "past_due"].includes(data.status) &&
+            (!data.current_period_end || new Date(data.current_period_end) > new Date())) ||
+          (data.status === "canceled" && data.current_period_end && new Date(data.current_period_end) > new Date())
+        );
+        setIsPro(!!active);
+      } catch {
+        setIsPro(false);
+      }
+    }
+    checkSubscription();
+  }, []);
 
   const handleExport = async (targetLang: string) => {
     if (!plan) return;
