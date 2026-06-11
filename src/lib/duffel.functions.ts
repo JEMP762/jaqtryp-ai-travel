@@ -194,7 +194,8 @@ export const createFlightOrder = createServerFn({ method: "POST" })
         .maybeSingle();
       const settings = (cs as CommissionSettings) || DEFAULT_COMMISSION_SETTINGS;
       const b = applyPricing(order.total_amount, order.total_currency, settings);
-      await supabase.from("booking_commissions").insert({
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await supabaseAdmin.from("booking_commissions").insert({
         user_id: userId,
         order_kind: "flight",
         order_id: order.id,
