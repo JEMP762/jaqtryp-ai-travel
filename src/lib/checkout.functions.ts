@@ -112,7 +112,8 @@ export const createFlightCheckoutSession = createServerFn({ method: "POST" })
 
     const session = await stripeFetch("/checkout/sessions", body);
 
-    await supabase
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    await supabaseAdmin
       .from("pending_flight_bookings")
       .update({ payment_session_id: session.id })
       .eq("id", pending.id);
