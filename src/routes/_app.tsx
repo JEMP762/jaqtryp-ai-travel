@@ -19,6 +19,7 @@ import {
   CreditCard,
   Menu,
   Mic,
+  Wallet,
 } from "lucide-react";
 
 import * as React from "react";

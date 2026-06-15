@@ -19,6 +19,7 @@ import { Route as CheckoutReturnRouteImport } from './routes/checkout.return'
 import { Route as ApiTtsRouteImport } from './routes/api.tts'
 import { Route as ApiChatRouteImport } from './routes/api.chat'
 import { Route as ApiAiRouteImport } from './routes/api.ai'
+import { Route as AppWalletRouteImport } from './routes/_app.wallet'
 import { Route as AppTranslatorRouteImport } from './routes/_app.translator'
 import { Route as AppStaysRouteImport } from './routes/_app.stays'
 import { Route as AppShieldRouteImport } from './routes/_app.shield'
@@ -84,6 +85,11 @@ const ApiAiRoute = ApiAiRouteImport.update({
   id: '/api/ai',
   path: '/api/ai',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AppWalletRoute = AppWalletRouteImport.update({
+  id: '/wallet',
+  path: '/wallet',
+  getParentRoute: () => AppRoute,
 } as any)
 const AppTranslatorRoute = AppTranslatorRouteImport.update({
   id: '/translator',
@@ -183,6 +189,7 @@ export interface FileRoutesByFullPath {
   '/shield': typeof AppShieldRoute
   '/stays': typeof AppStaysRoute
   '/translator': typeof AppTranslatorRoute
+  '/wallet': typeof AppWalletRoute
   '/api/ai': typeof ApiAiRoute
   '/api/chat': typeof ApiChatRoute
   '/api/tts': typeof ApiTtsRoute
@@ -210,6 +217,7 @@ export interface FileRoutesByTo {
   '/shield': typeof AppShieldRoute
   '/stays': typeof AppStaysRoute
   '/translator': typeof AppTranslatorRoute
+  '/wallet': typeof AppWalletRoute
   '/api/ai': typeof ApiAiRoute
   '/api/chat': typeof ApiChatRoute
   '/api/tts': typeof ApiTtsRoute
@@ -239,6 +247,7 @@ export interface FileRoutesById {
   '/_app/shield': typeof AppShieldRoute
   '/_app/stays': typeof AppStaysRoute
   '/_app/translator': typeof AppTranslatorRoute
+  '/_app/wallet': typeof AppWalletRoute
   '/api/ai': typeof ApiAiRoute
   '/api/chat': typeof ApiChatRoute
   '/api/tts': typeof ApiTtsRoute
@@ -268,6 +277,7 @@ export interface FileRouteTypes {
     | '/shield'
     | '/stays'
     | '/translator'
+    | '/wallet'
     | '/api/ai'
     | '/api/chat'
     | '/api/tts'
@@ -295,6 +305,7 @@ export interface FileRouteTypes {
     | '/shield'
     | '/stays'
     | '/translator'
+    | '/wallet'
     | '/api/ai'
     | '/api/chat'
     | '/api/tts'
@@ -323,6 +334,7 @@ export interface FileRouteTypes {
     | '/_app/shield'
     | '/_app/stays'
     | '/_app/translator'
+    | '/_app/wallet'
     | '/api/ai'
     | '/api/chat'
     | '/api/tts'
@@ -424,6 +436,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/ai'
       preLoaderRoute: typeof ApiAiRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_app/wallet': {
+      id: '/_app/wallet'
+      path: '/wallet'
+      fullPath: '/wallet'
+      preLoaderRoute: typeof AppWalletRouteImport
+      parentRoute: typeof AppRoute
     }
     '/_app/translator': {
       id: '/_app/translator'
@@ -551,6 +570,7 @@ interface AppRouteChildren {
   AppShieldRoute: typeof AppShieldRoute
   AppStaysRoute: typeof AppStaysRoute
   AppTranslatorRoute: typeof AppTranslatorRoute
+  AppWalletRoute: typeof AppWalletRoute
   AppAdminFinancialRoute: typeof AppAdminFinancialRoute
   AppAdminSettingsRoute: typeof AppAdminSettingsRoute
 }
@@ -566,6 +586,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppShieldRoute: AppShieldRoute,
   AppStaysRoute: AppStaysRoute,
   AppTranslatorRoute: AppTranslatorRoute,
+  AppWalletRoute: AppWalletRoute,
   AppAdminFinancialRoute: AppAdminFinancialRoute,
   AppAdminSettingsRoute: AppAdminSettingsRoute,
 }
