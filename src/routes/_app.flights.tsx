@@ -479,8 +479,9 @@ function FlightsPage() {
           <div className="mt-2 inline-block rounded-xl border border-primary/40 bg-background/60 px-6 py-2 text-2xl font-mono font-bold tracking-widest text-primary">
             {confirmed.booking_reference}
           </div>
-          <div className="mt-3 text-sm text-muted-foreground">
-            Total: {fmtMoney(confirmed.total_amount, confirmed.total_currency)}
+          <div className="mt-3 flex justify-center text-sm text-muted-foreground">
+            <span className="mr-2">Total:</span>
+            <PriceWithBrl amount={confirmed.total_amount} currency={confirmed.total_currency} size="sm" align="left" />
           </div>
           <button
             onClick={() => {
