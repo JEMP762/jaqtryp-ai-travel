@@ -19,6 +19,7 @@ import {
   CreditCard,
   Menu,
   Mic,
+  Wallet,
 } from "lucide-react";
 
 import * as React from "react";
@@ -69,6 +70,7 @@ function AppShell() {
     { to: "/flights", icon: Plane, label: "Voos" },
 
     { to: "/stays", icon: BedDouble, label: "Hospedagem" },
+    { to: "/wallet", icon: Wallet, label: "Carteira IA" },
     { to: "/deals", icon: Tag, label: "Promoções" },
     { to: "/shield", icon: ShieldCheck, label: "JAQ Shield" },
     { to: "/billing", icon: CreditCard, label: "Minha Assinatura" },

@@ -1,41 +1,113 @@
-## O que será construído
 
-Uma nova tela **Sala ao vivo** dentro do Tradutor, onde uma pessoa cria uma sala, recebe um **código de 6 caracteres + link** e envia para a outra. Cada lado entra, escolhe **seu próprio idioma** e a conversa flui em tempo real: cada pessoa fala no seu idioma, a outra **ouve em áudio (voz ElevenLabs) e lê o texto** no idioma dela.
+# Carteira IA Global — Plano de Implementação (v1 completa)
 
-## Fluxo do usuário
+Novo módulo do JAQTRYP AI para gestão financeira de viagem com IA. Nada existente será removido — só adições.
 
-1. Em `/live-translator`, novo botão **"Criar sala"** → gera código (ex.: `KX7-92A`) e abre `/live-room/KX7-92A`.
-2. Tela da sala mostra:
-   - Código grande + botão **Copiar link** + botão **Compartilhar** (WhatsApp/SMS via `navigator.share`).
-   - Seletor do **meu idioma** (PT, EN, ES, FR, IT, DE, JA, ZH).
-   - Status: "Aguardando convidado…" / "Conectado: 2 pessoas".
-   - Botão grande **🎙️ Falar** (mesmo padrão do tradutor atual).
-   - Histórico bilíngue: cada mensagem mostra original (cinza) + tradução para o meu idioma (destaque), com botão play para reouvir.
-3. A outra pessoa abre o link, escolhe o idioma dela e o mesmo botão "Falar" aparece.
-4. Quando A fala: áudio é transcrito (Scribe), traduzido para o idioma de B e tocado automaticamente no aparelho de B com voz ElevenLabs. B vê o texto nos dois idiomas.
+## 1. Decisões de produto
 
-## Como funciona por baixo (técnico)
+- **Acesso**: free com limites; pago libera tudo.
+  - **Free**: até 1 carteira, até 20 despesas/mês, câmbio em tempo real, dashboard básico, registro manual.
+  - **Pago**: ilimitado + Scanner OCR, Consultor Financeiro IA, chat conversacional, relatórios PDF, alertas inteligentes.
+- **Moeda principal**: detectada pela viagem ativa (destino) com fallback BRL; usuário pode sobrescrever.
+- **Despesa**: pode ser vinculada a uma trip (recomendado) ou avulsa (categoria "Geral").
 
-- **Sala em tempo real**: Supabase Realtime (canal `room:{code}`) com **Presence** para saber quem está conectado e qual idioma cada um escolheu. Sem tabela no banco — efêmero.
-- **Pipeline de fala**:
-  1. Cliente grava (MediaRecorder, já implementado).
-  2. POST `/api/public/stt` → texto no idioma de origem (já existe).
-  3. POST novo `/api/public/translate-broadcast` com `{ roomCode, fromLang, text, targets: [{userId, lang}] }` → para cada destinatário: chama Lovable AI Gateway (Gemini Flash) para traduzir + chama ElevenLabs TTS, devolve `{ userId, translatedText, audioBase64 }` por destinatário.
-  4. Cliente publica no canal Realtime: `{ type: 'message', fromUserId, originalText, fromLang, perRecipient: { [userId]: { text, audio } } }`.
-  5. Cada cliente, ao receber, pega só o pedaço dele, mostra texto e dá play no áudio.
-- **Por que servidor traduz e gera TTS, não o cliente**: chaves ElevenLabs/Lovable AI ficam server-side; uma única request por fala (em vez de N round-trips).
-- **Idiomas**: mapeamento PT→`por`, EN→`eng` etc. já existe em `api.public.stt.ts` — reaproveitado. Voz ElevenLabs multilíngue: `eleven_multilingual_v2` com voz Sarah (`EXAVITQu4vr4xnSDxMaL`) por padrão (neutra, funciona em todos idiomas).
-- **Sem autenticação obrigatória** na sala: qualquer pessoa com o link entra (UUID anônimo gerado no cliente). Mantém UX de "manda o link e pronto". Route `/live-room/$code` é pública.
+## 2. Banco de dados (Lovable Cloud)
 
-## Arquivos
+Novas tabelas no schema `public`, todas com RLS por `auth.uid()` e GRANTs:
 
-- `src/routes/_app.live-room.$code.tsx` (novo) — UI da sala, Presence, gravação, recepção, playback.
-- `src/routes/api.public.translate-broadcast.ts` (novo) — endpoint server route: traduz + gera TTS para N destinatários, retorna JSON.
-- `src/routes/_app.live-translator.tsx` (editado) — adicionar botão **"Criar sala ao vivo"** no topo, ao lado do modo atual (modo solo/presencial continua existindo).
-- `src/lib/i18n/translations.ts` (editado) — strings PT/EN: "Sala ao vivo", "Convidar", "Aguardando convidado", etc.
+- `wallets` — carteira do usuário (1+ por user). Campos: `user_id`, `name`, `main_currency`, `trip_id` (nullable, FK lógica para `trips.id`), `initial_balance`, `created_at`, `updated_at`.
+- `wallet_expenses` — despesas. Campos: `wallet_id`, `user_id`, `trip_id` (nullable), `amount`, `currency`, `amount_in_main` (cache convertido), `fx_rate_used`, `category` (enum text: food, transport, lodging, shopping, leisure, health, fees, other), `merchant`, `country`, `occurred_at`, `source` (manual|ocr|import), `receipt_url` (nullable), `notes`, `raw_ocr` (jsonb).
+- `wallet_budgets` — orçamento por carteira/trip. Campos: `wallet_id`, `trip_id`, `total_budget`, `daily_budget`, `emergency_reserve`, `currency`, `start_date`, `end_date`.
+- `wallet_alerts` — alertas gerados (orçamento estourando, gasto atípico, etc.).
+- Reaproveita `fx_rates` (já existe) para cache de cotações.
 
-## Limites e observações
+Storage bucket privado `wallet-receipts` para imagens enviadas ao scanner.
 
-- Conversa **não fica salva** (sem histórico no banco). Se você quiser salvar depois, é uma extensão fácil.
-- Áudio TTS pode pesar nos créditos ElevenLabs quando há muita fala — mostro contador discreto de uso na tela.
-- Funciona em até ~4 participantes na mesma sala (Presence + broadcast aguenta tranquilo).
+## 3. Server functions (TanStack `createServerFn`)
+
+`src/lib/wallet.functions.ts`:
+- `listWallets`, `createWallet`, `updateWallet`, `deleteWallet`
+- `listExpenses({ walletId, tripId?, from?, to? })`
+- `createExpense`, `updateExpense`, `deleteExpense` (faz conversão server-side usando `getFxRate`)
+- `getWalletSummary({ walletId })` → saldo, total gasto, por categoria, por país, série diária, % do orçamento
+- `setBudget`, `getBudget`
+- `wasteCheck` → detecta gastos excessivos e gera `wallet_alerts`
+
+`src/lib/wallet-ai.functions.ts` (gated por `has_active_subscription`):
+- `scanReceipt({ imageDataUrl })` — chama Lovable AI (`google/gemini-2.5-flash` multimodal) com prompt estruturado para extrair `{amount, currency, date, category, merchant, country}`; salva imagem no bucket; retorna sugestão para o usuário confirmar antes de gravar.
+- `askWalletAi({ walletId, prompt })` — carrega contexto (resumo + últimas despesas + orçamento) e responde via `google/gemini-3-flash-preview`.
+- `advisorReport({ walletId })` — gera relatório do Consultor Financeiro (economia, melhor momento de câmbio, comparação de custo, simulação).
+
+`src/lib/fx.functions.ts` — já existe `getFxRate`. Adicionar `fxAsk({ prompt })` que usa IA para interpretar perguntas em linguagem natural ("quanto são 500 euros em reais?") e chama `getFxRate` internamente.
+
+Todas as fns mutativas usam `requireSupabaseAuth`. Fns de IA verificam assinatura ativa via `has_active_subscription` e retornam erro amigável + CTA para free users que excederem cotas.
+
+## 4. Rotas / UI
+
+Nova rota autenticada `src/routes/_app.wallet.tsx` (hub) com sub-tabs em uma única página responsiva:
+
+```
+/wallet
+ ├─ Visão geral     → Dashboard (KPIs, gráficos, gastos por categoria/país, evolução diária)
+ ├─ Despesas       → Lista + filtros + botão "Nova despesa" (manual) e "Scanner IA"
+ ├─ Câmbio         → Conversor rápido + chat de câmbio IA
+ ├─ Orçamento      → Definição/visualização + projeção
+ ├─ Consultor IA   → Relatório do Consultor + chat conversacional
+ └─ Configurações  → Moeda principal, carteiras, vínculo com trip
+```
+
+Componentes novos em `src/components/wallet/`:
+- `WalletDashboard.tsx` (usa `recharts` já instalado)
+- `ExpenseList.tsx`, `ExpenseForm.tsx`
+- `ReceiptScanner.tsx` (upload de foto/print, preview do que a IA extraiu, confirmar/editar)
+- `FxConverter.tsx` + `FxChat.tsx`
+- `BudgetPanel.tsx`
+- `AdvisorChat.tsx` (reusa padrão de chat já presente no projeto)
+- `UpgradeGate.tsx` (chip "Pro" + CTA para `/billing` quando free)
+
+Entrada no menu: adicionar item "Carteira IA" no `_app` shell (sem mexer em rotas existentes).
+
+## 5. Integrações
+
+- **Planner (`_app.planner`)**: botão "Abrir carteira da viagem" cria/abre wallet vinculada à trip; ao criar trip, gera orçamento sugerido (server fn `suggestBudget` usando duração + destino + categoria).
+- **Stays / Flights / Checkout**: ao concluir reserva, registra automaticamente uma despesa em `wallet_expenses` (categoria lodging/transport) na carteira da trip, se existir.
+- **Tradutor / Live translator / Mapa**: link contextual "Adicionar despesa aqui" quando aplicável.
+- **Notificações (sonner)**: alertas de orçamento e do consultor.
+
+## 6. IA (Lovable AI Gateway)
+
+- Câmbio conversacional + chat financeiro → `google/gemini-3-flash-preview`.
+- OCR de recibos → `google/gemini-2.5-flash` (multimodal text+image) com `Output.object` (Zod) para resposta estruturada.
+- Consultor → mesmo modelo flash com prompt analítico e contexto resumido.
+- Tudo via `createServerFn`, nunca no cliente. Erros 402/429 mostram toast claro.
+
+## 7. Gating & limites (free)
+
+Helper `getWalletQuota(userId)` retorna `{ isPro, expensesThisMonth, limit }`. UI mostra:
+- Badge "Pro" nos cartões de Scanner, Consultor, Chat e Relatórios.
+- Banner com progress bar quando free chega perto do limite de despesas/mês.
+- Modais de upgrade reutilizando `useSubscriptionCheckout`.
+
+## 8. Detalhes técnicos
+
+```
+Stack: TanStack Start + Supabase (já configurado) + recharts + lucide + shadcn
+IA:    Lovable AI Gateway (LOVABLE_API_KEY já existe)
+FX:    open.er-api.com + exchangerate.host (já em fx.functions.ts) com cache fx_rates
+OCR:   Gemini multimodal via /v1/chat/completions (sem dependência externa)
+Auth:  requireSupabaseAuth + has_active_subscription
+Storage: bucket 'wallet-receipts' privado, signed URLs
+```
+
+Migração única cria tabelas + GRANTs + RLS + policies + bucket.
+
+## 9. Entregáveis
+
+1. Migration SQL (tabelas, RLS, GRANTs, bucket).
+2. `src/lib/wallet.functions.ts`, `src/lib/wallet-ai.functions.ts` (+ extensão de `fx.functions.ts`).
+3. Rota `_app.wallet.tsx` com tabs e todos componentes em `src/components/wallet/`.
+4. Hooks em `_app.planner.tsx` / `checkout.functions.ts` / `stays.functions.ts` / `duffel.functions.ts` para auto-registrar despesas (sem alterar lógica existente — só append).
+5. Link no menu lateral do `_app`.
+6. Gating free/pago + toasts de erro de IA.
+
+Sem alterar funcionalidades atuais — somente adição.

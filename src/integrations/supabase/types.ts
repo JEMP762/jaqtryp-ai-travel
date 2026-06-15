@@ -644,6 +644,204 @@ export type Database = {
         }
         Relationships: []
       }
+      wallet_alerts: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          message: string
+          read: boolean
+          severity: string
+          user_id: string
+          wallet_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          message: string
+          read?: boolean
+          severity?: string
+          user_id: string
+          wallet_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          message?: string
+          read?: boolean
+          severity?: string
+          user_id?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_alerts_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallet_budgets: {
+        Row: {
+          created_at: string
+          currency: string
+          daily_budget: number
+          emergency_reserve: number
+          end_date: string | null
+          id: string
+          start_date: string | null
+          total_budget: number
+          trip_id: string | null
+          updated_at: string
+          user_id: string
+          wallet_id: string
+        }
+        Insert: {
+          created_at?: string
+          currency?: string
+          daily_budget?: number
+          emergency_reserve?: number
+          end_date?: string | null
+          id?: string
+          start_date?: string | null
+          total_budget?: number
+          trip_id?: string | null
+          updated_at?: string
+          user_id: string
+          wallet_id: string
+        }
+        Update: {
+          created_at?: string
+          currency?: string
+          daily_budget?: number
+          emergency_reserve?: number
+          end_date?: string | null
+          id?: string
+          start_date?: string | null
+          total_budget?: number
+          trip_id?: string | null
+          updated_at?: string
+          user_id?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_budgets_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: true
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallet_expenses: {
+        Row: {
+          amount: number
+          amount_in_main: number
+          category: string
+          country: string | null
+          created_at: string
+          currency: string
+          fx_rate_used: number
+          id: string
+          merchant: string | null
+          notes: string | null
+          occurred_at: string
+          raw_ocr: Json | null
+          receipt_url: string | null
+          source: string
+          trip_id: string | null
+          updated_at: string
+          user_id: string
+          wallet_id: string
+        }
+        Insert: {
+          amount: number
+          amount_in_main: number
+          category?: string
+          country?: string | null
+          created_at?: string
+          currency: string
+          fx_rate_used?: number
+          id?: string
+          merchant?: string | null
+          notes?: string | null
+          occurred_at?: string
+          raw_ocr?: Json | null
+          receipt_url?: string | null
+          source?: string
+          trip_id?: string | null
+          updated_at?: string
+          user_id: string
+          wallet_id: string
+        }
+        Update: {
+          amount?: number
+          amount_in_main?: number
+          category?: string
+          country?: string | null
+          created_at?: string
+          currency?: string
+          fx_rate_used?: number
+          id?: string
+          merchant?: string | null
+          notes?: string | null
+          occurred_at?: string
+          raw_ocr?: Json | null
+          receipt_url?: string | null
+          source?: string
+          trip_id?: string | null
+          updated_at?: string
+          user_id?: string
+          wallet_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_expenses_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallets: {
+        Row: {
+          created_at: string
+          id: string
+          initial_balance: number
+          main_currency: string
+          name: string
+          trip_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          initial_balance?: number
+          main_currency?: string
+          name: string
+          trip_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          initial_balance?: number
+          main_currency?: string
+          name?: string
+          trip_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
