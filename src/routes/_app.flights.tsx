@@ -347,12 +347,8 @@ function FlightsPage() {
                   <div className="text-xs text-muted-foreground">{o.owner.name}</div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <div className="text-xs text-muted-foreground">Total</div>
-                    <div className="text-2xl font-bold text-primary">
-                      {fmtMoney(o.total_amount, o.total_currency)}
-                    </div>
-                  </div>
+                  <PriceWithBrl amount={o.total_amount} currency={o.total_currency} size="lg" />
+
                   <button
                     onClick={() => selectOffer(o)}
                     className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
