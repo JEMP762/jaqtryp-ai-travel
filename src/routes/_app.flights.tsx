@@ -509,7 +509,7 @@ function FlightsPage() {
                     {new Date(o.created_at).toLocaleString("pt-BR")}
                   </div>
                 </div>
-                <div className="font-semibold">{fmtMoney(o.total_amount, o.total_currency)}</div>
+                <PriceWithBrl amount={o.total_amount} currency={o.total_currency} size="sm" />
               </div>
             ))}
           </div>
