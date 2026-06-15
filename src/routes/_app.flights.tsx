@@ -368,9 +368,11 @@ function FlightsPage() {
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold">Dados dos passageiros</h2>
-              <p className="text-sm text-muted-foreground">
-                {selected.owner.name} · {fmtMoney(selected.total_amount, selected.total_currency)}
-              </p>
+              <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+                <span>{selected.owner.name}</span>
+                <span>·</span>
+                <PriceWithBrl amount={selected.total_amount} currency={selected.total_currency} size="sm" align="left" />
+              </div>
             </div>
             <button onClick={() => setSelected(null)} className="text-sm text-muted-foreground hover:text-foreground">
               ← Voltar
