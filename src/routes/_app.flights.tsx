@@ -10,6 +10,7 @@ import { searchFlights, createFlightOrder, listFlightOrders } from "@/lib/duffel
 import { getCommissionSettings } from "@/lib/pricing.functions";
 import { createFlightCheckoutSession } from "@/lib/checkout.functions";
 import { PriceBreakdown } from "@/components/pricing/PriceBreakdown";
+import { PriceWithBrl } from "@/components/pricing/PriceWithBrl";
 import { UpsellSuggestions } from "@/components/pricing/UpsellSuggestions";
 import { SmartCheckoutSummary } from "@/components/pricing/SmartCheckoutSummary";
 import { useAuth } from "@/hooks/useAuth";
