@@ -1,37 +1,27 @@
-## Mostrar preço em BRL ao lado do EUR no buscador de voos
+### Objetivo
+Eliminar o erro 404 de `favicon.ico` no console do navegador e adicionar um ícone de marca ao projeto Jaqtryp AI.
 
-Hoje o buscador de voos exibe apenas a moeda devolvida pela Duffel (EUR). Vou adicionar o equivalente em BRL ao lado, em tempo real, usando a cotação já disponível via `getFxRate` (mesma fonte usada no `PriceBreakdown`).
+### Problema atual
+- O navegador busca `/favicon.ico` automaticamente.
+- Nenhum arquivo favicon existe no projeto.
+- O `<head>` em `src/routes/__root.tsx` não declara um ícone.
 
-### Onde aparece o BRL
+### Passos
 
-1. **Cards da lista de resultados** (`_app.flights.tsx` ~linha 352)
-   - Linha 1 (destaque): `€ 123,45`
-   - Linha 2 (menor, cinza): `≈ R$ 765,30`
+1. **Gerar favicon visual**
+   - Criar uma imagem PNG (512x512) com o logo/letra "J" do Jaqtryp AI em estilo minimalista, adequada para favicon.
+   - A imagem será salva em `src/assets/favicon.png`.
 
-2. **Resumo do voo selecionado** (~linha 375) — mesmo padrão "€ X · ≈ R$ Y".
+2. **Adicionar link no `<head>`**
+   - Em `src/routes/__root.tsx`, incluir um link para o favicon dentro do array `links` do `head()`:
+     ```
+     { rel: "icon", type: "image/png", href: "/src/assets/favicon.png" }
+     ```
+   - Também adicionar `apple-touch-icon` para iOS.
 
-3. **Lista de pedidos anteriores** (~linha 512) — preço final com BRL abaixo.
+3. **Verificar build**
+   - Confirmar que a imagem é corretamente servida e que o erro 404 desaparece do console.
 
-4. **Tela de confirmação** (~linha 484) — total em EUR + equivalente BRL.
-
-O `PriceBreakdown` (painel detalhado do voo selecionado) já mostra BRL — sem mudanças ali.
-
-### Como
-
-- Criar componente leve `PriceWithBrl` em `src/components/pricing/PriceWithBrl.tsx`:
-  - Recebe `amount`, `currency`.
-  - Se `currency === "BRL"`, mostra só o valor.
-  - Caso contrário, busca cotação via `useServerFn(getFxRate)` + `useQuery` (cache de 1h, igual ao `PriceBreakdown`) e renderiza linha principal na moeda original + linha secundária `≈ R$ …`.
-  - Reusa helpers `convert` e `fmt` de `@/lib/fx`.
-- Substituir as 4 chamadas a `fmtMoney(...)` listadas acima pelo `<PriceWithBrl ... />`.
-
-### Não muda
-
-- API Duffel, cobrança, checkout: tudo continua na moeda original.
-- Lógica de preço/comissão: intacta.
-- Outras páginas (stays, checkout): fora do escopo deste pedido.
-
-### Arquivos tocados
-
-- novo: `src/components/pricing/PriceWithBrl.tsx`
-- editado: `src/routes/_app.flights.tsx` (4 trechos de exibição)
+### Resultado esperado
+- Nenhum erro 404 relacionado a favicon no console.
+- Ícone visível na aba do navegador e em bookmarks.
