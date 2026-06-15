@@ -10,6 +10,7 @@ import { searchFlights, createFlightOrder, listFlightOrders } from "@/lib/duffel
 import { getCommissionSettings } from "@/lib/pricing.functions";
 import { createFlightCheckoutSession } from "@/lib/checkout.functions";
 import { PriceBreakdown } from "@/components/pricing/PriceBreakdown";
+import { PriceWithBrl } from "@/components/pricing/PriceWithBrl";
 import { UpsellSuggestions } from "@/components/pricing/UpsellSuggestions";
 import { SmartCheckoutSummary } from "@/components/pricing/SmartCheckoutSummary";
 import { useAuth } from "@/hooks/useAuth";
@@ -346,12 +347,8 @@ function FlightsPage() {
                   <div className="text-xs text-muted-foreground">{o.owner.name}</div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <div className="text-xs text-muted-foreground">Total</div>
-                    <div className="text-2xl font-bold text-primary">
-                      {fmtMoney(o.total_amount, o.total_currency)}
-                    </div>
-                  </div>
+                  <PriceWithBrl amount={o.total_amount} currency={o.total_currency} size="lg" />
+
                   <button
                     onClick={() => selectOffer(o)}
                     className="rounded-xl bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90"
@@ -371,9 +368,11 @@ function FlightsPage() {
           <div className="mb-4 flex items-center justify-between">
             <div>
               <h2 className="text-lg font-semibold">Dados dos passageiros</h2>
-              <p className="text-sm text-muted-foreground">
-                {selected.owner.name} · {fmtMoney(selected.total_amount, selected.total_currency)}
-              </p>
+              <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
+                <span>{selected.owner.name}</span>
+                <span>·</span>
+                <PriceWithBrl amount={selected.total_amount} currency={selected.total_currency} size="sm" align="left" />
+              </div>
             </div>
             <button onClick={() => setSelected(null)} className="text-sm text-muted-foreground hover:text-foreground">
               ← Voltar
@@ -480,8 +479,9 @@ function FlightsPage() {
           <div className="mt-2 inline-block rounded-xl border border-primary/40 bg-background/60 px-6 py-2 text-2xl font-mono font-bold tracking-widest text-primary">
             {confirmed.booking_reference}
           </div>
-          <div className="mt-3 text-sm text-muted-foreground">
-            Total: {fmtMoney(confirmed.total_amount, confirmed.total_currency)}
+          <div className="mt-3 flex justify-center text-sm text-muted-foreground">
+            <span className="mr-2">Total:</span>
+            <PriceWithBrl amount={confirmed.total_amount} currency={confirmed.total_currency} size="sm" align="left" />
           </div>
           <button
             onClick={() => {
@@ -509,7 +509,7 @@ function FlightsPage() {
                     {new Date(o.created_at).toLocaleString("pt-BR")}
                   </div>
                 </div>
-                <div className="font-semibold">{fmtMoney(o.total_amount, o.total_currency)}</div>
+                <PriceWithBrl amount={o.total_amount} currency={o.total_currency} size="sm" />
               </div>
             ))}
           </div>
