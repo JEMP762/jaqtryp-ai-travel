@@ -1,27 +1,41 @@
-### Objetivo
-Eliminar o erro 404 de `favicon.ico` no console do navegador e adicionar um ícone de marca ao projeto Jaqtryp AI.
+O erro **400: redirect_uri_mismatch** acontece porque a URL configurada em **Google Cloud → Authorized redirect URIs** não bate exatamente com a URL que o backend usa no login Google.
 
-### Problema atual
-- O navegador busca `/favicon.ico` automaticamente.
-- Nenhum arquivo favicon existe no projeto.
-- O `<head>` em `src/routes/__root.tsx` não declara um ícone.
+## O que fazer agora no Google Cloud
 
-### Passos
+No seu OAuth Client ID do tipo **Web application**, em **Authorized redirect URIs**, adicione exatamente esta URL:
 
-1. **Gerar favicon visual**
-   - Criar uma imagem PNG (512x512) com o logo/letra "J" do Jaqtryp AI em estilo minimalista, adequada para favicon.
-   - A imagem será salva em `src/assets/favicon.png`.
+```text
+https://etmuritswjialcycfgvw.supabase.co/auth/v1/callback
+```
 
-2. **Adicionar link no `<head>`**
-   - Em `src/routes/__root.tsx`, incluir um link para o favicon dentro do array `links` do `head()`:
-     ```
-     { rel: "icon", type: "image/png", href: "/src/assets/favicon.png" }
-     ```
-   - Também adicionar `apple-touch-icon` para iOS.
+Salve e aguarde 1–5 minutos para o Google aplicar.
 
-3. **Verificar build**
-   - Confirmar que a imagem é corretamente servida e que o erro 404 desaparece do console.
+## O que NÃO usar nesse modo manual
 
-### Resultado esperado
-- Nenhum erro 404 relacionado a favicon no console.
-- Ícone visível na aba do navegador e em bookmarks.
+Não use estas URLs como redirect URI autorizada no Google Cloud para o modo manual:
+
+```text
+https://oauth.lovable.app/callback
+https://jaqtryp-ai-travel.lovable.app/~oauth/callback
+```
+
+Essas são do fluxo gerenciado, não do fluxo manual com suas credenciais.
+
+## Authorized JavaScript origins
+
+Em **Authorized JavaScript origins**, deixe as origens do seu app, sem caminho no final:
+
+```text
+https://jaqtryp-ai-travel.lovable.app
+https://id-preview--6d4b0769-d635-4330-aa35-732b66d1a0d8.lovable.app
+```
+
+Se for testar localmente, também pode adicionar:
+
+```text
+http://localhost:8080
+```
+
+## Depois disso
+
+Teste novamente o botão Google. Se continuar dando erro, copie a linha **redirect_uri=...** que aparece nos “detalhes do erro” do Google, porque ela mostra exatamente qual URL o Google está recebendo.
